@@ -18,6 +18,10 @@ This checklist maps the supplied Sprint 1 requirements to executable evidence af
 | Citation-only synthesis | `services/synthesizer.py` | Sources and evidence drawer | `test_no_uncited_recommendation_and_confidence_reduction` | Complete |
 | Complete/conflict/degraded demos | local fixtures and agents | Scenario controls | scenario and Decision Lab tests | Complete |
 | Transparent UI runtime state | response types and `Dashboard.tsx` | Runtime strip, connection badge, degraded cards | frontend typecheck/build | Complete |
+| Dynamic NSE/BSE catalogue | `services/instruments.py`, SQLite instruments | instrument search/status/refresh APIs | dynamic market tests | Complete; real count depends on sync |
+| Official Upstox market adapter | `services/upstox.py` | quote/batch quote and dynamic analysis | mocked auth/rate/cache/candle tests | Optional live configuration |
+| Arbitrary instrument identity | profile holding/watchlist tables and instrument keys | search/select/watch/portfolio UI | persistence and dynamic analysis tests | Complete |
+| Safe arbitrary document ingestion | `routes/documents.py`, document association table | admin API | ingestion/leakage test | Complete local ingestion |
 | Educational safety | synthesis guard, disclaimer | persistent disclaimer | synthesis tests | Complete |
 
 The supplied request references a PDF but no PDF file was present in the repository or attachment set. This audit therefore maps the explicit requirements in the supplied task text and does not claim coverage of unseen material.

@@ -48,6 +48,47 @@ Historical accuracy is calculated only from `historical_signals.json` as correct
 
 `FilingRetriever` splits each local synthetic filing into paragraph chunks. When the configured local MiniLM sentence-transformer is cached, normalized semantic embeddings are persisted in `backend/app/data/filing_vectors.json` with a corpus fingerprint and queried by cosine similarity. Each result retains source ID, title, document, chunk ID, excerpt, and relevance score. If the model/dependency cannot load, the same interface uses TF-IDF and truthfully reports `tfidf_fallback`; it is never described as vector retrieval. These documents remain synthetic demonstration material.
 
+## Dynamic NSE/BSE market provider
+
+FinSync synchronizes all supported ordinary NSE/BSE equity instruments returned by the configured Upstox BOD catalogue; it does not claim every security listed by either exchange independently of that provider catalogue. The official Upstox JSON master is normalized into SQLite using `instrument_key` as the stable identity, then searched locally by symbol, name, ISIN, and exchange. Exact symbols rank first. The UI debounces search and never embeds or renders the complete catalogue.
+
+Provider flow:
+
+1. `POST /api/v1/instruments/refresh?force=true` downloads the official complete JSON master and upserts only `NSE_EQ`/`BSE_EQ` records whose `instrument_type` is `EQ`.
+2. `GET /api/v1/instruments/search?q=...&exchange=NSE` searches indexed SQLite data without a remote keystroke request.
+3. `GET /api/v1/market/quote/{instrument_key}` retrieves one selected quote. `GET /api/v1/market/quotes?instrument_keys=...` batches visible watchlist keys where Upstox is active.
+4. Analysis downloads and caches daily candles on demand, validates and orders them, removes duplicate timestamps, and calculates returns, moving average, volume anomaly, volatility, drawdown, and RSI only when enough history exists.
+5. Quote results are cached for `QUOTE_CACHE_SECONDS`; candles are cached for `CANDLE_CACHE_SECONDS`. Upstox standard API limits are documented by Upstox as 50 requests/second, 500/minute and 2,000/30 minutes. FinSync does not poll continuously.
+
+Official references: [Upstox instruments](https://upstox.com/developer/api-documentation/instruments/), [full market quotes](https://upstox.com/developer/api-documentation/get-full-market-quote/), [historical candle V3](https://upstox.com/developer/api-documentation/v3/get-historical-candle-data/), and [rate limits](https://upstox.com/developer/api-documentation/rate-limiting/).
+
+### Upstox developer setup
+
+Create an Upstox developer application and complete Upstox OAuth outside FinSync to obtain an access token. FinSync does not implement login, store refresh tokens, or expose tokens to the browser. Put the access token only in the local `.env` file:
+
+```dotenv
+MARKET_DATA_MODE=live
+MARKET_DATA_PROVIDER=upstox
+UPSTOX_ACCESS_TOKEN=
+```
+
+An empty token keeps the app in the guaranteed offline mode. Upstox access tokens can expire; a 401/403 is reported as invalid/expired, 429 as rate-limited, timeouts as unavailable, and malformed/partial responses as provider errors. For original demo symbols only, failures can fall back to visibly simulated fixtures. Arbitrary instruments without live data return an explicit error rather than borrowed or fabricated data.
+
+### Market-data status meanings
+
+| Mode | Exact meaning |
+|---|---|
+| `live` | A quote was obtained directly from the authenticated provider request. |
+| `delayed` | Provider metadata explicitly identifies delayed data. FinSync never infers this label. |
+| `cached` | A recent previously retrieved quote was reused within the configured TTL. |
+| `simulated` | The bundled local fixture was used and is not market data. |
+
+Backend connectivity, provider name, market-data mode/freshness, agent runtime, retrieval mode, and agent completeness are displayed separately. “API connected” never means a quote is live.
+
+### Local document ingestion
+
+Administrators can `POST /api/v1/documents` with `instrument_key`, matching symbol/company metadata, title, source date, document type, attribution, and text content. FinSync validates the key/symbol against the catalogue, stores the association in SQLite, and writes a local text source for chunking. Retrieval filters by the selected symbol and tests prevent cross-company citation leakage. There is no automatic regulatory-site scraper; only explicitly supplied local documents and the three richer demo filings are available.
+
 ## Persistence
 
 SQLite stores user profiles and complete serialized `AnalysisResponse` logs. Existing databases are migrated additively for the full response JSON. The history endpoint validates and deserializes each saved response through Pydantic. New optional metric-count fields have defaults so older persisted analyses remain readable.
@@ -136,6 +177,12 @@ npm run build
 | GET | `/` | API identity |
 | GET | `/health` | Service health and version |
 | GET | `/api/v1/stocks` | Validated simulated market snapshots |
+| GET | `/api/v1/instruments/search` | Search the synchronized NSE/BSE equity catalogue |
+| GET | `/api/v1/instruments/status` | Catalogue count and last synchronization result |
+| POST | `/api/v1/instruments/refresh` | Refresh/upsert the official catalogue; `force=true` bypasses TTL |
+| GET | `/api/v1/market/quote/{instrument_key}` | Selected-instrument quote with provider/freshness metadata |
+| GET | `/api/v1/market/quotes` | Batch visible watchlist quote lookup |
+| POST | `/api/v1/documents` | Ingest an attributed local instrument document |
 | POST | `/api/v1/profiles` | Create or update a user profile |
 | GET | `/api/v1/profiles/{user_id}` | Load a stored profile |
 | POST | `/api/v1/analyze` | Run and persist the four-agent pipeline |
@@ -171,6 +218,17 @@ Example analysis request:
 - **RELIANCE — complete:** generally positive evidence, 4/4 completed agents, 100% data completeness, and traceable market/news/filing/profile sources.
 - **TCS — conflict:** favorable technical momentum conflicts with weaker retrieved fundamentals and profile suitability. Confidence is reduced. Switching between conservative and aggressive profiles changes Behavioral Agent output and personalized guidance for the same market snapshot.
 - **INFY — degraded:** no synthetic news records exist. Sentiment returns `unavailable` and `insufficient_data`; the other three agents complete, completeness is 75%, confidence is reduced, and missing evidence remains visible.
+
+### Live judge sequence
+
+1. Configure a valid Upstox access token, use live mode, start the backend, and force one catalogue refresh.
+2. Search a company or symbol, select its NSE/BSE listing, and verify the Upstox/provider timestamp and `live` or `cached` badge.
+3. Add the instrument key to the watchlist or portfolio, save, and run analysis.
+4. Inspect candle-derived technical evidence. If no local filing/news exists, point out the degraded Fundamental/Sentiment agents, lower confidence, sources, and Decision Laboratory gaps.
+
+### Offline judge sequence
+
+Leave tokens empty and use `MARKET_DATA_MODE=simulated`. The bundled six-equity catalogue fixture supports search UI demonstrations. Run RELIANCE, TCS, and INFY from “Offline demo scenarios” to show complete, conflicting, and degraded behavior. Non-fixture instruments are never silently assigned simulated prices.
 
 ## Two-minute demo
 
@@ -224,6 +282,9 @@ Example analysis request:
 - Fixture-based historical accuracy uses a very small sample and is not evidence of live-market predictive performance.
 - The local synthetic corpus is deliberately small and is not a substitute for verified regulatory filings. Semantic mode depends on a locally available embedding model; otherwise the UI reports TF-IDF fallback.
 - LLM and Alpha Vantage modes are optional and inactive without credentials. No brokerage integration, transaction execution, or external citation service is provided.
+- The local catalogue fixture contains six equity listings (four NSE and two BSE) plus one deliberately filtered futures record. A real catalogue count depends on the latest successful Upstox synchronization.
+- Live quote/candle behavior requires a valid Upstox access token. No real credential was used by the offline automated tests; provider responses are mocked.
+- Market-open status is reported `closed` outside ordinary session hours/weekends and otherwise `unknown`, because FinSync does not fabricate holiday/session status without an authoritative status response.
 - A missing feed or agent reduces completeness and confidence; without cited evidence the system returns `insufficient_data`.
 
 FinSync Intelligence is educational research software, not personalized financial advice. It does not guarantee returns or issue direct buy/sell instructions.

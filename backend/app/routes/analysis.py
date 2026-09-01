@@ -13,6 +13,8 @@ from app.services.metrics import (data_completeness, historical_accuracy,
                                   historical_accuracy_counts, portfolio_concentration)
 from app.services.orchestrator import run_agents
 from app.services.synthesizer import synthesize
+from app.services.instruments import find_by_symbol, get_instrument
+from app.services.market_data import IncompleteMarketDataError
 
 router = APIRouter(prefix="/analyze", tags=["analysis"])
 provider = ResilientMarketDataProvider()
@@ -32,11 +34,17 @@ def _deduplicate_sources(agents: list[object]) -> list[Source]:
 async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
     started = perf_counter()
     profile = get_profile(payload.user_id)
+    with connection() as conn:
+        decisions = conn.execute("SELECT action,ticker,created_at FROM user_decisions WHERE user_id=? ORDER BY id DESC LIMIT 20",
+                                 (profile.user_id,)).fetchall()
+    research_profile = profile.model_copy(update={"interaction_history": [*profile.interaction_history,
+        *[{"action": row["action"], "symbol": row["ticker"], "timestamp": row["created_at"]} for row in decisions]]})
     try:
-        snapshot = provider.get_snapshot(payload.symbol)
-    except SymbolNotFoundError as exc:
+        instrument = get_instrument(payload.instrument_key) if payload.instrument_key else find_by_symbol(payload.symbol)
+        snapshot = provider.get_instrument_snapshot(instrument) if instrument and payload.instrument_key else provider.get_snapshot(payload.symbol)
+    except (SymbolNotFoundError, IncompleteMarketDataError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    agents, orchestration_latency = await run_agents(snapshot, profile)
+    agents, orchestration_latency = await run_agents(snapshot, research_profile)
     market_signal, synthesis, warnings = synthesize(agents)
     total_latency = round((perf_counter() - started) * 1000, 3)
     historical_correct, historical_evaluated = historical_accuracy_counts(snapshot.symbol)

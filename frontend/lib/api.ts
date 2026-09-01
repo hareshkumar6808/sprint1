@@ -1,4 +1,4 @@
-import type { AnalysisResponse, DecisionAction, HealthResponse, MarketSnapshot, Profile, ProfileInput, UserDecision } from "@/types/analysis";
+import type { AnalysisResponse, DecisionAction, HealthResponse, Instrument, MarketQuote, MarketSnapshot, Profile, ProfileInput, UserDecision } from "@/types/analysis";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 export class ApiError extends Error { constructor(message: string, public status?: number) { super(message); this.name = "ApiError"; } }
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -18,7 +18,10 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 }
 export const listStocks = (signal?: AbortSignal) => request<MarketSnapshot[]>("/stocks", { signal });
 export const saveProfile = (profile: ProfileInput, signal?: AbortSignal) => request<Profile>("/profiles", { method: "POST", body: JSON.stringify(profile), signal });
-export const runAnalysis = (userId: string, symbol: string, signal?: AbortSignal) => request<AnalysisResponse>("/analyze", { method: "POST", body: JSON.stringify({ user_id: userId, symbol }), signal });
+export const runAnalysis = (userId: string, symbol: string, instrumentKey?: string, signal?: AbortSignal) => request<AnalysisResponse>("/analyze", { method: "POST", body: JSON.stringify({ user_id: userId, symbol, instrument_key: instrumentKey }), signal });
 export const loadAnalysisHistory = (userId: string, signal?: AbortSignal) => request<AnalysisResponse[]>(`/logs/${encodeURIComponent(userId)}`, { signal });
 export const recordDecision = (analysis: AnalysisResponse, action: DecisionAction) => request<UserDecision>("/decisions", { method: "POST", body: JSON.stringify({ user_id: analysis.profile.user_id, ticker: analysis.symbol, action, analysis_id: analysis.analysis_id, current_signal: analysis.market_signal, confidence: analysis.synthesis.confidence }) });
 export const loadDecisions = (userId: string, signal?: AbortSignal) => request<UserDecision[]>(`/decisions/${encodeURIComponent(userId)}`, { signal });
+export const searchInstruments = (query: string, signal?: AbortSignal) => request<Instrument[]>(`/instruments/search?q=${encodeURIComponent(query)}&limit=12`, { signal });
+export const getQuote = (instrumentKey: string, signal?: AbortSignal) => request<MarketQuote>(`/market/quote/${encodeURIComponent(instrumentKey)}`, { signal });
+export const getQuotes = (instrumentKeys: string[], signal?: AbortSignal) => request<MarketQuote[]>(`/market/quotes?instrument_keys=${encodeURIComponent(instrumentKeys.join(","))}`, { signal });

@@ -1,0 +1,9 @@
+[
+  {"segment":"NSE_EQ","name":"RELIANCE INDUSTRIES LTD","exchange":"NSE","isin":"INE002A01018","instrument_type":"EQ","instrument_key":"NSE_EQ|INE002A01018","lot_size":1,"tick_size":5.0,"trading_symbol":"RELIANCE"},
+  {"segment":"BSE_EQ","name":"RELIANCE INDUSTRIES LTD","exchange":"BSE","isin":"INE002A01018","instrument_type":"EQ","instrument_key":"BSE_EQ|INE002A01018","lot_size":1,"tick_size":5.0,"trading_symbol":"500325"},
+  {"segment":"NSE_EQ","name":"TATA CONSULTANCY SERVICES LTD","exchange":"NSE","isin":"INE467B01029","instrument_type":"EQ","instrument_key":"NSE_EQ|INE467B01029","lot_size":1,"tick_size":5.0,"trading_symbol":"TCS"},
+  {"segment":"NSE_EQ","name":"INFOSYS LTD","exchange":"NSE","isin":"INE009A01021","instrument_type":"EQ","instrument_key":"NSE_EQ|INE009A01021","lot_size":1,"tick_size":5.0,"trading_symbol":"INFY"},
+  {"segment":"NSE_EQ","name":"HDFC BANK LTD","exchange":"NSE","isin":"INE040A01034","instrument_type":"EQ","instrument_key":"NSE_EQ|INE040A01034","lot_size":1,"tick_size":5.0,"trading_symbol":"HDFCBANK"},
+  {"segment":"BSE_EQ","name":"HDFC BANK LTD","exchange":"BSE","isin":"INE040A01034","instrument_type":"EQ","instrument_key":"BSE_EQ|INE040A01034","lot_size":1,"tick_size":5.0,"trading_symbol":"500180"},
+  {"segment":"NSE_FO","name":"RELIANCE INDUSTRIES LTD","exchange":"NSE","instrument_type":"FUT","instrument_key":"NSE_FO|123","trading_symbol":"RELIANCE FUT"}
+]

@@ -77,21 +77,94 @@ class MarketSnapshot(BaseModel):
     company_name: str
     current_price: float
     previous_close: float
-    five_day_return: float
-    twenty_day_return: float
-    twenty_day_moving_average: float
+    five_day_return: float | None
+    twenty_day_return: float | None
+    twenty_day_moving_average: float | None
     current_volume: int
-    average_volume: int
+    average_volume: int | None
     volatility: float
     drawdown: float
-    pe_ratio: float
-    revenue_growth: float
-    debt_to_equity_ratio: float
+    pe_ratio: float | None
+    revenue_growth: float | None
+    debt_to_equity_ratio: float | None
     data_timestamp: datetime
     simulated_data: bool
     provider_name: str = "local_simulated_fixture"
     freshness: str = "fixture_timestamp"
     fallback_reason: str | None = None
+    instrument_key: str | None = None
+    exchange: str | None = None
+    data_mode: Literal["live", "delayed", "cached", "simulated"] = "simulated"
+    retrieved_at: datetime | None = None
+    age_seconds: int | None = Field(default=None, ge=0)
+    market_status: Literal["open", "closed", "unknown"] = "unknown"
+    one_day_return: float | None = None
+    rsi: float | None = Field(default=None, ge=0, le=100)
+    indicator_warnings: list[str] = Field(default_factory=list)
+
+
+class Instrument(BaseModel):
+    instrument_key: str
+    exchange: Literal["NSE", "BSE"]
+    segment: Literal["NSE_EQ", "BSE_EQ"]
+    symbol: str
+    name: str
+    isin: str | None = None
+    tick_size: float | None = None
+    lot_size: int | None = None
+    instrument_type: str
+    last_synced_at: datetime
+
+
+class InstrumentSearchResult(BaseModel):
+    instrument_key: str
+    exchange: Literal["NSE", "BSE"]
+    symbol: str
+    name: str
+    isin: str | None = None
+    instrument_type: str
+
+
+class CatalogueStatus(BaseModel):
+    provider: str
+    status: Literal["success", "cached", "failed", "never"]
+    instrument_count: int = Field(ge=0)
+    last_attempt_at: datetime | None = None
+    last_success_at: datetime | None = None
+    error: str | None = None
+
+
+class MarketQuote(BaseModel):
+    instrument_key: str
+    exchange: str
+    symbol: str
+    company_name: str
+    last_price: float
+    previous_close: float | None = None
+    absolute_change: float | None = None
+    percentage_change: float | None = None
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    close: float | None = None
+    volume: int | None = None
+    provider_timestamp: datetime | None = None
+    retrieved_at: datetime
+    provider_name: str
+    data_mode: Literal["live", "delayed", "cached", "simulated"]
+    age_seconds: int | None = Field(default=None, ge=0)
+    freshness: str
+    fallback_reason: str | None = None
+    market_status: Literal["open", "closed", "unknown"] = "unknown"
+
+
+class Candle(BaseModel):
+    timestamp: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
 
 
 class Synthesis(BaseModel):
@@ -224,6 +297,7 @@ class AnalysisResponse(BaseModel):
 class AnalyzeRequest(BaseModel):
     user_id: str = Field(min_length=1)
     symbol: str = Field(min_length=1)
+    instrument_key: str | None = None
 
 
 class DecisionInput(BaseModel):

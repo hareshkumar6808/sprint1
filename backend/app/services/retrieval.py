@@ -41,7 +41,7 @@ class FilingRetriever:
         self.mode: RetrievalMode = "unavailable"
         self.fallback_reason: str | None = None
         self.vector_store = vector_store
-        for path in sorted(filings_dir.glob("*.txt")):
+        for path in sorted(filings_dir.rglob("*.txt")):
             paragraphs = [part.strip() for part in path.read_text().split("\n\n") if part.strip()]
             for index, text in enumerate(paragraphs):
                 self.chunks.append(RetrievedChunk(path.name, f"{path.stem}-chunk-{index}", text, 0.0,

@@ -34,7 +34,8 @@ async def run_agents(snapshot: MarketSnapshot, profile: Profile,
     deterministic = await asyncio.gather(
         _safe("technical", technical.run(snapshot)),
         _safe("sentiment", sentiment.run(snapshot.symbol)),
-        _safe("fundamental", fundamental.run(snapshot.symbol, retriever)),
+        _safe("fundamental", fundamental.run(snapshot.symbol, retriever, snapshot.company_name,
+                                               snapshot.instrument_key.split("|", 1)[1] if snapshot.instrument_key and "|" in snapshot.instrument_key else None)),
         _safe("behavioral", behavioral.run(profile, snapshot)),
     )
     provider = LLMProvider()

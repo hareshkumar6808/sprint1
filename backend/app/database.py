@@ -51,6 +51,33 @@ def initialize_database() -> None:
           action TEXT NOT NULL, analysis_id TEXT NOT NULL, current_signal TEXT NOT NULL,
           confidence INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS instruments (
+          instrument_key TEXT PRIMARY KEY, exchange TEXT NOT NULL, segment TEXT NOT NULL,
+          symbol TEXT NOT NULL, name TEXT NOT NULL, isin TEXT, tick_size REAL, lot_size INTEGER,
+          instrument_type TEXT NOT NULL, last_synced_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_instruments_symbol ON instruments(symbol COLLATE NOCASE);
+        CREATE INDEX IF NOT EXISTS idx_instruments_name ON instruments(name COLLATE NOCASE);
+        CREATE INDEX IF NOT EXISTS idx_instruments_exchange ON instruments(exchange);
+        CREATE TABLE IF NOT EXISTS catalogue_sync (
+          provider TEXT PRIMARY KEY, status TEXT NOT NULL, last_attempt_at TEXT,
+          last_success_at TEXT, instrument_count INTEGER NOT NULL DEFAULT 0, error TEXT
+        );
+        CREATE TABLE IF NOT EXISTS instrument_documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, instrument_key TEXT NOT NULL, symbol TEXT NOT NULL,
+          company_name TEXT NOT NULL, title TEXT NOT NULL, document_type TEXT NOT NULL,
+          source_date TEXT NOT NULL, attribution TEXT NOT NULL, local_path TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS profile_holdings (
+          user_id TEXT NOT NULL, instrument_key TEXT NOT NULL, symbol TEXT NOT NULL,
+          exchange TEXT, allocation REAL, quantity REAL, value REAL,
+          PRIMARY KEY(user_id,instrument_key)
+        );
+        CREATE TABLE IF NOT EXISTS profile_watchlist (
+          user_id TEXT NOT NULL, instrument_key TEXT NOT NULL,
+          PRIMARY KEY(user_id,instrument_key)
+        );
         """)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(analysis_logs)")}
         if "response_json" not in columns:

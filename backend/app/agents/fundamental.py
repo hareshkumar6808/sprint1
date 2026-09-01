@@ -14,13 +14,16 @@ QUERIES = {
 }
 
 
-async def run(symbol: str, retriever: FilingRetriever | None = None) -> AgentOutput:
+async def run(symbol: str, retriever: FilingRetriever | None = None,
+              company_name: str | None = None, isin: str | None = None) -> AgentOutput:
     started = perf_counter()
     index = retriever or FilingRetriever()
     retrieval_started = perf_counter()
     retrieved: list[RetrievedChunk] = []
+    identity = " ".join(item for item in (company_name, symbol, isin) if item)
     for query in QUERIES.values():
-        retrieved.extend(index.retrieve(symbol, query, limit=1))
+        query_text = f"{identity} {query}" if index.mode == "semantic" else query
+        retrieved.extend(index.retrieve(symbol, query_text, limit=1))
     unique = {chunk.chunk_id: chunk for chunk in retrieved}
     chunks = list(unique.values())
     retrieval_latency = round((perf_counter() - retrieval_started) * 1000, 3)
