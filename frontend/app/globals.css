@@ -32,6 +32,18 @@
   --warning: #A66B24;
   --negative: #B64B4B;
   --positive: #32657A;
+
+  /* ===== Backwards Compatibility (Old Dark Theme Variables) ===== */
+  /* These are mapped to new light-mode colors for gradual migration */
+  --ink: #17191C;
+  --muted: #818A96;
+  --lime: #315F86;
+  --amber: #A66B24;
+  --panel: #FFFFFF;
+  --line: #DDE1E6;
+  --soft: #F1F3F5;
+  --red: #B64B4B;
+  --blue: #315F86;
 }
 
 /* ============================================================================

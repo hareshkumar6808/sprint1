@@ -51,8 +51,7 @@ function SourceItem({ source, agents }: { source: Source; agents: AgentOutput[] 
 }
 
 export function Dashboard() {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [version, setVersion] = useState("");
+
   const [history, setHistory] = useState<AnalysisResponse[]>([]);
   const [decisions, setDecisions] = useState<UserDecision[]>([]);
   const [selectedSymbol, setSelectedSymbol] = useState("TCS");
@@ -83,7 +82,7 @@ export function Dashboard() {
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const results = await Promise.allSettled([getHealth(signal), loadAnalysisHistory(USER_ID, signal), loadDecisions(USER_ID, signal)]);
-    if (results[0].status === "fulfilled") { setConnected(true); setVersion(results[0].value.version); } else setConnected(false);
+
     if (results[1].status === "fulfilled") setHistory(results[1].value);
     if (results[2].status === "fulfilled") setDecisions(results[2].value);
   }, []);
@@ -97,8 +96,8 @@ export function Dashboard() {
   async function handleSave(showSuccess = true) {
     if (validation) { setRetryAction(showSuccess ? "save" : "analyze"); setMessage({ kind: "error", text: validation }); return false; }
     setSaving(true); setMessage(null);
-    try { await persistProfile(profilePayload); setConnected(true); if (showSuccess) setMessage({ kind: "success", text: "Profile and portfolio saved for demo-user." }); return true; }
-    catch (error) { setRetryAction(showSuccess ? "save" : "analyze"); setConnected(false); setMessage({ kind: "error", text: error instanceof Error ? error.message : "Unable to save the profile." }); return false; }
+    try { await persistProfile(profilePayload); if (showSuccess) setMessage({ kind: "success", text: "Profile and portfolio saved for demo-user." }); return true; }
+    catch (error) { setRetryAction(showSuccess ? "save" : "analyze"); setMessage({ kind: "error", text: error instanceof Error ? error.message : "Unable to save the profile." }); return false; }
     finally { setSaving(false); }
   }
 
@@ -106,8 +105,8 @@ export function Dashboard() {
     if (loading) return;
     const saved = await handleSave(false); if (!saved) return;
     setLoading(true); setStage(0); setMessage(null);
-    try { const result = await runAnalysis(USER_ID, selectedSymbol, selectedInstrument.instrument_key); setAnalysis(result); setConnected(true); setMessage({ kind: "success", text: `${selectedSymbol} analysis completed with ${result.metrics.agents_completed} of ${result.metrics.agents_expected} agents.` }); const updated = await loadAnalysisHistory(USER_ID); setHistory(updated); window.setTimeout(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth" }), 50); }
-    catch (error) { setRetryAction("analyze"); setConnected(false); setMessage({ kind: "error", text: error instanceof Error ? error.message : "Analysis failed. Please retry." }); }
+    try { const result = await runAnalysis(USER_ID, selectedSymbol, selectedInstrument.instrument_key); setAnalysis(result); setMessage({ kind: "success", text: `${selectedSymbol} analysis completed with ${result.metrics.agents_completed} of ${result.metrics.agents_expected} agents.` }); const updated = await loadAnalysisHistory(USER_ID); setHistory(updated); window.setTimeout(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth" }), 50); }
+    catch (error) { setRetryAction("analyze"); setMessage({ kind: "error", text: error instanceof Error ? error.message : "Analysis failed. Please retry." }); }
     finally { setLoading(false); }
   }
 
