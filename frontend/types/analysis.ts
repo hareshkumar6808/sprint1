@@ -10,5 +10,20 @@ export interface MarketSnapshot { symbol: string; company_name: string; current_
 export interface AgentOutput { agent: "technical" | "sentiment" | "fundamental" | "behavioral"; status: AgentStatus; classification: Classification; confidence: number; summary: string; evidence: string[]; risks: string[]; sources: Source[]; latency_ms: number; warnings: string[] }
 export interface Metrics { latency_ms: number; historical_signal_accuracy_percent: number; portfolio_concentration_score: number; data_completeness_percent: number; agents_completed: number; agents_expected: number; historical_signal_correct?: number; historical_signal_evaluated?: number }
 export interface Synthesis { classification: Classification; confidence: number; summary: string; personalized_guidance: string; conflicts: string[]; risk_flags: string[]; evidence_used: string[]; missing_evidence: string[] }
-export interface AnalysisResponse { analysis_id: string; symbol: string; generated_at: string; profile: Profile; market_snapshot: MarketSnapshot; market_signal: Classification; agents: AgentOutput[]; synthesis: Synthesis; sources: Source[]; reasoning_trace: string[]; metrics: Metrics; warnings: string[]; disclaimer: string }
+export type DecisionLabSignal = Classification | "moderately_bullish" | "moderately_bearish";
+export type ReplayStatus = "complete" | "degraded" | "failed";
+export interface DecisionLab {
+  investigation_id: string;
+  event: { title: string; description: string };
+  committee: { support: number; oppose: number; abstain: number; consensus_score: number; fragility_score: number };
+  devils_advocate: { signal: DecisionLabSignal; confidence: number; challenge: string; evidence: string[] };
+  evidence_verification: { coverage_score: number; verified_claims: number; total_claims: number; unsupported_claims: string[] };
+  missing_information: { gaps: string[]; confidence_penalty: number };
+  decision_dna: { factor: string; weight: number }[];
+  change_our_mind: string[];
+  stress_test: { normal_signal: DecisionLabSignal; normal_confidence: number; stressed_signal: DecisionLabSignal; stressed_confidence: number; robustness: "low" | "medium" | "high" | string; removed_evidence: string };
+  counterfactual: { investment_amount: number; risk_before: number; risk_after: number; sector_exposure_before: number; sector_exposure_after: number; diversification_before: number; diversification_after: number; interpretation: string };
+  replay: { order: number; stage: string; status: ReplayStatus; message: string }[];
+}
+export interface AnalysisResponse { analysis_id: string; symbol: string; generated_at: string; profile: Profile; market_snapshot: MarketSnapshot; market_signal: Classification; agents: AgentOutput[]; synthesis: Synthesis; sources: Source[]; reasoning_trace: string[]; metrics: Metrics; warnings: string[]; disclaimer: string; decision_lab?: DecisionLab }
 export interface HealthResponse { status: string; service: string; version: string }
