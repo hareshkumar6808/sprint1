@@ -186,3 +186,35 @@ def test_historical_metric_sample_is_exposed_and_old_logs_remain_compatible(clie
     old_shape["metrics"].pop("historical_signal_evaluated")
     restored = AnalysisResponse.model_validate(old_shape)
     assert restored.metrics.historical_signal_evaluated == 0
+
+
+def test_decision_lab_contract_and_scenario_differences(client: TestClient) -> None:
+    create_profile(client, "lab-user", "moderate", 25)
+    results = {symbol: client.post("/api/v1/analyze", json={"user_id": "lab-user", "symbol": symbol}).json()
+               for symbol in ("RELIANCE", "TCS", "INFY")}
+
+    required = {"investigation_id", "event", "committee", "devils_advocate",
+                "evidence_verification", "missing_information", "decision_dna",
+                "change_our_mind", "stress_test", "counterfactual", "replay"}
+    for response in results.values():
+        lab = response["decision_lab"]
+        assert required <= lab.keys()
+        assert lab["investigation_id"].startswith(f"INV-{response['symbol']}-")
+        assert sum(item["weight"] for item in lab["decision_dna"]) == 100
+        numeric_scores = [lab["committee"]["consensus_score"], lab["committee"]["fragility_score"],
+                          lab["devils_advocate"]["confidence"],
+                          lab["evidence_verification"]["coverage_score"],
+                          lab["missing_information"]["confidence_penalty"],
+                          lab["stress_test"]["normal_confidence"],
+                          lab["stress_test"]["stressed_confidence"]]
+        assert all(isinstance(score, int) and 0 <= score <= 100 for score in numeric_scores)
+        assert lab["stress_test"]["stressed_confidence"] <= lab["stress_test"]["normal_confidence"]
+        assert [step["order"] for step in lab["replay"]] == list(range(1, len(lab["replay"]) + 1))
+        assert all(step["status"] in {"complete", "degraded", "failed"} for step in lab["replay"])
+
+    tcs_committee = results["TCS"]["decision_lab"]["committee"]
+    assert tcs_committee["support"] and tcs_committee["oppose"]
+    assert tcs_committee["fragility_score"] >= 40
+    infy_lab = results["INFY"]["decision_lab"]
+    assert any("sentiment" in gap.lower() for gap in infy_lab["missing_information"]["gaps"])
+    assert infy_lab["missing_information"]["confidence_penalty"] > 0

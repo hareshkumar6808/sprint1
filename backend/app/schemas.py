@@ -103,6 +103,84 @@ class AnalysisMetrics(BaseModel):
     historical_signal_evaluated: int = Field(default=0, ge=0)
 
 
+class DecisionEvent(BaseModel):
+    title: str
+    description: str
+
+
+class CommitteeResult(BaseModel):
+    support: int = Field(ge=0)
+    oppose: int = Field(ge=0)
+    abstain: int = Field(ge=0)
+    consensus_score: int = Field(ge=0, le=100)
+    fragility_score: int = Field(ge=0, le=100)
+
+
+class DevilsAdvocate(BaseModel):
+    signal: str
+    confidence: int = Field(ge=0, le=100)
+    challenge: str
+    evidence: list[str]
+
+
+class EvidenceVerification(BaseModel):
+    coverage_score: int = Field(ge=0, le=100)
+    verified_claims: int = Field(ge=0)
+    total_claims: int = Field(ge=0)
+    unsupported_claims: list[str]
+
+
+class MissingInformation(BaseModel):
+    gaps: list[str]
+    confidence_penalty: int = Field(ge=0, le=100)
+
+
+class DecisionFactor(BaseModel):
+    factor: str
+    weight: int = Field(ge=0, le=100)
+
+
+class StressTest(BaseModel):
+    normal_signal: str
+    normal_confidence: int = Field(ge=0, le=100)
+    stressed_signal: str
+    stressed_confidence: int = Field(ge=0, le=100)
+    robustness: Literal["high", "medium", "low"]
+    removed_evidence: str
+
+
+class Counterfactual(BaseModel):
+    investment_amount: int = Field(ge=0)
+    risk_before: int = Field(ge=0, le=100)
+    risk_after: int = Field(ge=0, le=100)
+    sector_exposure_before: int = Field(ge=0, le=100)
+    sector_exposure_after: int = Field(ge=0, le=100)
+    diversification_before: int = Field(ge=0, le=100)
+    diversification_after: int = Field(ge=0, le=100)
+    interpretation: str
+
+
+class ReplayStep(BaseModel):
+    order: int = Field(ge=1)
+    stage: str
+    status: Literal["complete", "degraded", "failed"]
+    message: str
+
+
+class DecisionLab(BaseModel):
+    investigation_id: str
+    event: DecisionEvent
+    committee: CommitteeResult
+    devils_advocate: DevilsAdvocate
+    evidence_verification: EvidenceVerification
+    missing_information: MissingInformation
+    decision_dna: list[DecisionFactor]
+    change_our_mind: list[str]
+    stress_test: StressTest
+    counterfactual: Counterfactual
+    replay: list[ReplayStep]
+
+
 class AnalysisResponse(BaseModel):
     analysis_id: str
     symbol: str
@@ -115,6 +193,7 @@ class AnalysisResponse(BaseModel):
     sources: list[Source]
     reasoning_trace: list[str]
     metrics: AnalysisMetrics
+    decision_lab: DecisionLab
     warnings: list[str]
     disclaimer: str
 
