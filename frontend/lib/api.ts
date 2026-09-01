@@ -1,5 +1,5 @@
-import type { AnalysisResponse, DecisionAction, HealthResponse, Instrument, MarketQuote, MarketSnapshot, Profile, ProfileInput, UserDecision } from "@/types/analysis";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
+import type { AnalysisResponse, Candle, DecisionAction, HealthResponse, Instrument, MarketQuote, MarketSnapshot, Profile, ProfileInput, UserDecision } from "@/types/analysis";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 export class ApiError extends Error { constructor(message: string, public status?: number) { super(message); this.name = "ApiError"; } }
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -11,7 +11,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return data as T;
 }
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const root = API_URL.replace(/\/api\/v1\/?$/, ""); let response: Response;
+  const root = API_URL === "/api/v1" ? "" : API_URL.replace(/\/api\/v1\/?$/, ""); let response: Response;
   try { response = await fetch(`${root}/health`, { cache: "no-store", signal }); } catch { throw new ApiError("The FinSync backend is unavailable. Start the API and retry."); }
   if (!response.ok) throw new ApiError(`Health check failed (${response.status})`, response.status);
   try { return await response.json() as HealthResponse; } catch { throw new ApiError("The health response was not valid JSON."); }
@@ -25,3 +25,4 @@ export const loadDecisions = (userId: string, signal?: AbortSignal) => request<U
 export const searchInstruments = (query: string, signal?: AbortSignal) => request<Instrument[]>(`/instruments/search?q=${encodeURIComponent(query)}&limit=12`, { signal });
 export const getQuote = (instrumentKey: string, signal?: AbortSignal) => request<MarketQuote>(`/market/quote/${encodeURIComponent(instrumentKey)}`, { signal });
 export const getQuotes = (instrumentKeys: string[], signal?: AbortSignal) => request<MarketQuote[]>(`/market/quotes?instrument_keys=${encodeURIComponent(instrumentKeys.join(","))}`, { signal });
+export const getCandles = (instrumentKey: string, signal?: AbortSignal) => request<Candle[]>(`/market/candles/${encodeURIComponent(instrumentKey)}`, { signal });

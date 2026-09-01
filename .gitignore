@@ -10,6 +10,7 @@ htmlcov/
 backend/app/data/filing_vectors.json
 .env
 .env.local
+.vercel/
 node_modules/
 .next/
 out/
