@@ -19,7 +19,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   columns,
   data,
   keyField = "id",
@@ -27,6 +27,8 @@ export function DataTable<T extends Record<string, unknown>>({
   isLoading,
   emptyMessage = "No data available",
 }: DataTableProps<T>) {
+  const valueFor = (row: T, key: keyof T | string): unknown =>
+    (row as Record<string, unknown>)[String(key)];
   if (isLoading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
@@ -63,7 +65,7 @@ export function DataTable<T extends Record<string, unknown>>({
       <tbody>
         {data.map((row) => (
           <tr
-            key={String(row[keyField as keyof T])}
+            key={String(valueFor(row, keyField))}
             onClick={() => onRowClick?.(row)}
             style={{ cursor: onRowClick ? "pointer" : "auto" }}
           >
@@ -76,8 +78,8 @@ export function DataTable<T extends Record<string, unknown>>({
                 }}
               >
                 {col.render
-                  ? col.render(row[col.key as keyof T], row)
-                  : String(row[col.key as keyof T] ?? "")}
+                  ? col.render(valueFor(row, col.key), row)
+                  : String(valueFor(row, col.key) ?? "")}
               </td>
             ))}
           </tr>

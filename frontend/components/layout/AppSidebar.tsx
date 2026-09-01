@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, BarChart3, TrendingUp, Briefcase, Eye, Newspaper, Brain, Zap, Clock, Settings, User } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,8 +26,28 @@ interface AppSidebarProps {
   onNavigate?: (pageId: string) => void;
 }
 
-export function AppSidebar({ currentPage = "overview", onNavigate }: AppSidebarProps) {
+const PAGE_ROUTES: Record<string, string> = {
+  overview: "/",
+  markets: "/markets",
+  portfolio: "/portfolio",
+  watchlist: "/",
+  news: "/news",
+  intelligence: "/intelligence",
+  "decision-lab": "/decision-lab",
+  history: "/history",
+  settings: "/settings",
+  profile: "/profile",
+};
+
+export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (pageId: string) => {
+    const route = PAGE_ROUTES[pageId];
+    if (route === "/") return pathname === "/";
+    return pathname.startsWith(route);
+  };
 
   return (
     <>
@@ -61,20 +83,20 @@ export function AppSidebar({ currentPage = "overview", onNavigate }: AppSidebarP
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+            const route = PAGE_ROUTES[item.id];
             return (
               <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  className={currentPage === item.id ? "active" : ""}
-                  onClick={(e) => {
-                    e.preventDefault();
+                <Link
+                  href={route}
+                  className={isActive(item.id) ? "active" : ""}
+                  onClick={() => {
                     onNavigate?.(item.id);
                     setIsOpen(false);
                   }}
                 >
                   <Icon size={17} />
                   <span>{item.label}</span>
-                </a>
+                </Link>
               </li>
             );
           })}
@@ -85,19 +107,19 @@ export function AppSidebar({ currentPage = "overview", onNavigate }: AppSidebarP
           <nav className="sidebar-nav">
             {FOOTER_ITEMS.map((item) => {
               const Icon = item.icon;
+              const route = PAGE_ROUTES[item.id];
               return (
                 <li key={item.id}>
-                  <a
-                    href={`#${item.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
+                  <Link
+                    href={route}
+                    onClick={() => {
                       onNavigate?.(item.id);
                       setIsOpen(false);
                     }}
                   >
                     <Icon size={17} />
                     <span>{item.label}</span>
-                  </a>
+                  </Link>
                 </li>
               );
             })}
