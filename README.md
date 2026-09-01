@@ -1,10 +1,12 @@
 # FinSync Intelligence
 
-FinSync Intelligence is a local-first, multi-agent financial research application for retail investors. It turns visibly simulated market data, synthetic news, local filing passages, and a stored investor profile into a traceable educational research report. It does not provide live trading, direct buy/sell instructions, or guaranteed outcomes.
+FinSync Intelligence is a local-first, multi-agent financial research application for retail investors. It combines current or visibly simulated market data, local evidence, and a stored investor profile into a traceable educational report. It does not provide trading execution, direct buy/sell instructions, or guaranteed outcomes.
 
 ## Problem and solution
 
 Retail investors often see isolated price signals without the evidence, conflicts, suitability context, or data-quality limitations behind them. FinSync runs four independent agents concurrently, uses local semantic embeddings when a cached model is available, falls back explicitly to TF-IDF, preserves every agent result, and synthesizes only cited evidence. Optional LLM and live-market modes never replace the reliable offline demonstration.
+
+The `agents` array remains the stable four-agent frontend contract. `analytical_units` is additive and records all 12 A–Z units: the four original specialists; concurrent Regulatory, Macro/Regime, and Portfolio Risk specialists; Devil's Advocate, Missing Information, Evidence Verification, and Committee/Conflict review; and bounded Synthesis. Unavailable benchmark or regulatory material produces `insufficient_data` rather than inferred facts.
 
 ## Architecture and data flow
 
@@ -60,6 +62,26 @@ Provider flow:
 4. Analysis downloads and caches daily candles on demand, validates and orders them, removes duplicate timestamps, and calculates returns, moving average, volume anomaly, volatility, drawdown, and RSI only when enough history exists.
 5. Quote results are cached for `QUOTE_CACHE_SECONDS`; candles are cached for `CANDLE_CACHE_SECONDS`. Upstox standard API limits are documented by Upstox as 50 requests/second, 500/minute and 2,000/30 minutes. FinSync does not poll continuously.
 
+### Free Yahoo Finance mode (default)
+
+Upstox quotes require an authenticated, KYC-verified brokerage account. For users who do not want to supply brokerage credentials, FinSync uses Yahoo Finance's public chart service on demand without an API key. The synchronized Upstox master remains the searchable universe; only the selected instrument and visible watchlist/portfolio instruments are queried remotely.
+
+```dotenv
+MARKET_DATA_MODE=free
+MARKET_DATA_PROVIDER=yahoo
+YAHOO_FINANCE_ENABLED=true
+YAHOO_QUOTE_CACHE_SECONDS=30
+YAHOO_CANDLE_CACHE_SECONDS=900
+```
+
+NSE symbols map to `<trading_symbol>.NS` and BSE symbols to `<trading_symbol>.BO`; the internal `instrument_key` is never changed. Returned Yahoo metadata must identify the exact mapped symbol. Company-stock (`INE`) and ETF/fund (`INF`) categories are exposed as a useful, explicitly fallible ISIN heuristic; raw instrument type is retained and unknown EQ records remain searchable under “All supported.”
+
+Yahoo Finance is an unofficial market-data provider. Its delay is not guaranteed or independently verified, market-closed values are the latest available close/trade, and data is labelled `unverified_delay` or `cached`—never exchange-certified, broker data, or guaranteed live. It must not be used for trading or order execution.
+
+Provider priority is explicit: free mode uses Yahoo, then a recent Yahoo cache, then simulated data only for the original offline fixtures; arbitrary instruments never receive a fixture price. Upstox mode uses authenticated Upstox, its cache, optional Yahoo fallback when `YAHOO_ALLOW_FALLBACK=true`, and finally the same fixture-only fallback. Quotes use limited retries, request coalescing, short caches, and a failure cooldown; daily candles use a longer cache and include adjusted close when available.
+
+Arbitrary catalogue instruments can still run the full pipeline. Technical evidence uses their quote/history; Fundamental and Sentiment degrade to `insufficient_data` when no associated document or attributed news exists, rather than borrowing another company's evidence.
+
 Official references: [Upstox instruments](https://upstox.com/developer/api-documentation/instruments/), [full market quotes](https://upstox.com/developer/api-documentation/get-full-market-quote/), [historical candle V3](https://upstox.com/developer/api-documentation/v3/get-historical-candle-data/), and [rate limits](https://upstox.com/developer/api-documentation/rate-limiting/).
 
 ### Upstox developer setup
@@ -78,8 +100,9 @@ An empty token keeps the app in the guaranteed offline mode. Upstox access token
 
 | Mode | Exact meaning |
 |---|---|
-| `live` | A quote was obtained directly from the authenticated provider request. |
+| `live` | A quote was obtained directly from an authenticated provider that reports it as live. Yahoo never uses this label. |
 | `delayed` | Provider metadata explicitly identifies delayed data. FinSync never infers this label. |
+| `unverified_delay` | Yahoo current data whose delay cannot be independently guaranteed. |
 | `cached` | A recent previously retrieved quote was reused within the configured TTL. |
 | `simulated` | The bundled local fixture was used and is not market data. |
 
@@ -100,7 +123,7 @@ SQLite stores user profiles and complete serialized `AnalysisResponse` logs. Exi
 - Orchestration: Python `asyncio`
 - Retrieval: optional sentence-transformer semantic embeddings with a persistent JSON vector store; scikit-learn TF-IDF fallback
 - Optional reasoning: OpenAI-compatible Chat Completions, bounded by timeout and Pydantic validation
-- Optional live quotes: Alpha Vantage with automatic simulated-fixture fallback
+- Market data: free no-key Yahoo Finance, optional authenticated Upstox, legacy Alpha Vantage, and offline fixtures
 - Tests: pytest, FastAPI TestClient/httpx
 
 ## Folder structure
@@ -228,7 +251,7 @@ Example analysis request:
 
 ### Offline judge sequence
 
-Leave tokens empty and use `MARKET_DATA_MODE=simulated`. The bundled six-equity catalogue fixture supports search UI demonstrations. Run RELIANCE, TCS, and INFY from “Offline demo scenarios” to show complete, conflicting, and degraded behavior. Non-fixture instruments are never silently assigned simulated prices.
+Use `MARKET_DATA_MODE=simulated` for a network-free run. The bundled six-equity catalogue fixture supports search UI demonstrations. Run RELIANCE, TCS, and INFY from “Offline demo scenarios” to show complete, conflicting, and degraded behavior. Non-fixture instruments are never silently assigned simulated prices.
 
 ## Two-minute demo
 
@@ -276,12 +299,43 @@ Leave tokens empty and use `MARKET_DATA_MODE=simulated`. The bundled six-equity 
 | No uncited conclusion | `synthesize()` guard | No sources returns `insufficient_data` | Complete |
 | Architecture/logic summary | This README and Mermaid diagram | Written flow, roles, retrieval, synthesis, safety | Complete |
 
+## A–Z backend additions and integration
+
+The generated, sanitized integration contract is `backend/openapi-a-z.json`. The frontend branch can continue consuming all old fields and optionally adopt `analytical_units`, `regime`, and `synthesis_weights`. It should generate types from this contract after merge rather than copying backend enums by hand.
+
+Additional endpoints include:
+
+- `GET /api/v1/system/status`, `/api/v1/market/status`, and `/api/v1/market/candles/{instrument_key}` for explicit runtime and provider state.
+- `GET /api/v1/investigations`, investigation detail, committee detail, source-removal, and confidence-stress routes.
+- `POST /api/v1/portfolio/simulate` and `/api/v1/portfolio/shock`, with assumptions and `insufficient_data` where risk inputs are absent.
+- `GET /api/v1/time-travel/{symbol}`, `/api/v1/events`, `/api/v1/predictions`, and `/api/v1/agent-performance`.
+- `POST/GET /api/v1/journals` and `GET /api/v1/behavior/{user_id}`. Behavioral patterns require at least five stored actions; reliability requires `RELIABILITY_MIN_SAMPLES` evaluated predictions.
+
+SQLite startup migrations add `events`, `journals`, `predictions`, and `audit_events`, plus additive expanded profile JSON. Analysis writes deduplicated evidence-derived events and unevaluated predictions. It does not calculate accuracy until actual outcomes have been stored.
+
+### Grok/xAI setup
+
+Set `LLM_PROVIDER=xai`, `XAI_API_KEY`, and an account-accessible `XAI_MODEL` only in `backend/.env`. The default base URL is `https://api.x.ai/v1`. Requests use structured JSON Schema output, Pydantic validation, timeouts, bounded concurrency, transient retry, a daily-call budget, and cooldown after rate limiting. With a missing key or model the runtime is `disabled`; malformed/refused/provider-failed calls are `degraded` and retain deterministic output. No real xAI credential or call is used by the test suite. The endpoint and structured-output shape were selected from the official [xAI structured outputs documentation](https://docs.x.ai/developers/model-capabilities/text/structured-outputs).
+
+### Document ingestion
+
+`POST /api/v1/documents` accepts normalized UTF-8 text or base64 PDF content, enforces `DOCUMENT_MAX_BYTES`, validates instrument identity and media type, and keeps retrieval isolated by symbol. PDF extraction uses `pypdf`. MiniLM is used only when the configured model is already available locally; otherwise retrieval explicitly reports `tfidf_fallback`.
+
+### Two-person demo handoff
+
+1. Backend developer starts in simulated mode, creates a profile, and runs RELIANCE, TCS, and INFY.
+2. Frontend developer shows the unchanged four-agent interface, then optionally renders the additive committee and Decision Lab fields.
+3. Backend developer opens system status, an investigation's committee detail, source-removal stress, event history, and reliability status.
+4. Both identify fixture data as simulated, Yahoo as unofficial/unverified-delay, xAI as disabled unless an authenticated request succeeds, and historical reliability as insufficient until the minimum evaluated sample exists.
+
 ## Limitations and disclaimers
 
 - All bundled market records, news, filing summaries, and historical outcomes are synthetic and visibly marked simulated.
 - Fixture-based historical accuracy uses a very small sample and is not evidence of live-market predictive performance.
 - The local synthetic corpus is deliberately small and is not a substitute for verified regulatory filings. Semantic mode depends on a locally available embedding model; otherwise the UI reports TF-IDF fallback.
-- LLM and Alpha Vantage modes are optional and inactive without credentials. No brokerage integration, transaction execution, or external citation service is provided.
+- xAI, legacy OpenAI-compatible refinement, Alpha Vantage, and Upstox modes are optional and inactive without credentials. No transaction execution or external citation service is provided.
+- Yahoo and xAI behavior is mock-verified only in automated tests; no live provider request was used for this implementation. Yahoo availability depends on its unofficial public chart service. Upstox depends on a valid user-supplied token.
+- Regime remains `unknown` without benchmark data. Portfolio risk, sector exposure, correlations, and shock sensitivity remain `insufficient_data` unless supplied; deterministic simulations state their assumptions.
 - The local catalogue fixture contains six equity listings (four NSE and two BSE) plus one deliberately filtered futures record. A real catalogue count depends on the latest successful Upstox synchronization.
 - Live quote/candle behavior requires a valid Upstox access token. No real credential was used by the offline automated tests; provider responses are mocked.
 - Market-open status is reported `closed` outside ordinary session hours/weekends and otherwise `unknown`, because FinSync does not fabricate holiday/session status without an authoritative status response.

@@ -37,7 +37,7 @@ class Source(BaseModel):
 
 
 class AgentOutput(BaseModel):
-    agent: Literal["technical", "sentiment", "fundamental", "behavioral"]
+    agent: Literal["technical", "sentiment", "fundamental", "behavioral", "regulatory", "macro_regime", "portfolio_risk", "devils_advocate", "missing_information", "evidence_verification", "committee", "synthesis"]
     status: AgentStatus
     classification: Classification
     confidence: int = Field(ge=0, le=100)
@@ -47,7 +47,12 @@ class AgentOutput(BaseModel):
     sources: list[Source] = Field(default_factory=list)
     latency_ms: float = Field(ge=0)
     warnings: list[str] = Field(default_factory=list)
-    runtime_mode: Literal["llm", "deterministic_fallback"] = "deterministic_fallback"
+    runtime_mode: Literal["xai", "llm", "deterministic_fallback", "degraded", "disabled"] = "deterministic_fallback"
+    version: str = "1.0"
+    role: str = "specialist"
+    model: str | None = None
+    fallback_reason: str | None = None
+    missing_information: list[str] = Field(default_factory=list)
     started_at: datetime | None = None
     ended_at: datetime | None = None
     evidence_ids: list[str] = Field(default_factory=list)
@@ -64,6 +69,15 @@ class ProfileInput(BaseModel):
     portfolio: list[dict[str, Any]] = Field(default_factory=list)
     watchlist: list[str] = Field(default_factory=list)
     interaction_history: list[dict[str, Any]] = Field(default_factory=list)
+    name: str | None = None
+    experience: str | None = None
+    horizon: str | None = None
+    portfolio_size_bracket: str | None = None
+    style: str | None = None
+    sector_preferences: list[str] = Field(default_factory=list)
+    maximum_acceptable_loss: float | None = Field(default=None, ge=0, le=100)
+    derivatives_experience: str | None = None
+    trading_frequency: str | None = None
 
 
 class Profile(ProfileInput):
@@ -94,13 +108,18 @@ class MarketSnapshot(BaseModel):
     fallback_reason: str | None = None
     instrument_key: str | None = None
     exchange: str | None = None
-    data_mode: Literal["live", "delayed", "cached", "simulated"] = "simulated"
+    data_mode: Literal["live", "delayed", "unverified_delay", "cached", "simulated"] = "simulated"
     retrieved_at: datetime | None = None
     age_seconds: int | None = Field(default=None, ge=0)
     market_status: Literal["open", "closed", "unknown"] = "unknown"
     one_day_return: float | None = None
     rsi: float | None = Field(default=None, ge=0, le=100)
     indicator_warnings: list[str] = Field(default_factory=list)
+    provider_symbol: str | None = None
+    source_class: str = "Simulated local fixture"
+    data_status: str = "simulated"
+    cache_status: str = "not_applicable"
+    disclaimer: str = "Educational research only; not financial advice or order execution."
 
 
 class Instrument(BaseModel):
@@ -113,6 +132,7 @@ class Instrument(BaseModel):
     tick_size: float | None = None
     lot_size: int | None = None
     instrument_type: str
+    category: Literal["stock", "etf_fund", "unknown"] = "unknown"
     last_synced_at: datetime
 
 
@@ -123,6 +143,7 @@ class InstrumentSearchResult(BaseModel):
     name: str
     isin: str | None = None
     instrument_type: str
+    category: Literal["stock", "etf_fund", "unknown"] = "unknown"
 
 
 class CatalogueStatus(BaseModel):
@@ -151,11 +172,18 @@ class MarketQuote(BaseModel):
     provider_timestamp: datetime | None = None
     retrieved_at: datetime
     provider_name: str
-    data_mode: Literal["live", "delayed", "cached", "simulated"]
+    data_mode: Literal["live", "delayed", "unverified_delay", "cached", "simulated"]
     age_seconds: int | None = Field(default=None, ge=0)
     freshness: str
     fallback_reason: str | None = None
     market_status: Literal["open", "closed", "unknown"] = "unknown"
+    provider_symbol: str | None = None
+    currency: str | None = None
+    exchange_timezone: str | None = None
+    source_class: str = "Market-data provider"
+    data_status: str = "unverified"
+    cache_status: str = "miss"
+    disclaimer: str = "Educational research only; not financial advice or order execution."
 
 
 class Candle(BaseModel):
@@ -165,6 +193,9 @@ class Candle(BaseModel):
     low: float
     close: float
     volume: int
+    adjusted_close: float | None = None
+    provider: str | None = None
+    exchange_timezone: str | None = None
 
 
 class Synthesis(BaseModel):
@@ -194,9 +225,9 @@ class AnalysisMetrics(BaseModel):
     evidence_coverage_percent: float = Field(default=0, ge=0, le=100)
     agent_agreement_percent: float = Field(default=0, ge=0, le=100)
     fallback_activations: int = Field(default=0, ge=0)
-    runtime_mode: Literal["llm", "deterministic_fallback"] = "deterministic_fallback"
+    runtime_mode: Literal["xai", "llm", "deterministic_fallback", "degraded", "disabled"] = "deterministic_fallback"
     retrieval_mode: Literal["semantic", "tfidf_fallback", "unavailable"] = "unavailable"
-    market_data_mode: Literal["live", "simulated"] = "simulated"
+    market_data_mode: Literal["live", "free", "delayed", "unverified_delay", "cached", "simulated"] = "simulated"
 
 
 class DecisionEvent(BaseModel):
@@ -292,6 +323,9 @@ class AnalysisResponse(BaseModel):
     decision_lab: DecisionLab
     warnings: list[str]
     disclaimer: str
+    analytical_units: list[AgentOutput] = Field(default_factory=list)
+    regime: Literal["trending", "range_bound", "high_volatility", "broad_market_stress", "unknown"] = "unknown"
+    synthesis_weights: dict[str, float] = Field(default_factory=dict)
 
 
 class AnalyzeRequest(BaseModel):

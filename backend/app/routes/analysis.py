@@ -15,11 +15,12 @@ from app.services.orchestrator import run_agents
 from app.services.synthesizer import synthesize
 from app.services.instruments import find_by_symbol, get_instrument
 from app.services.market_data import IncompleteMarketDataError
+from app.services.committee import expanded_committee
 
 router = APIRouter(prefix="/analyze", tags=["analysis"])
 provider = ResilientMarketDataProvider()
-DISCLAIMER = ("Educational research intelligence using simulated local data. This is not financial advice, "
-              "a direct trading instruction, or a guaranteed outcome.")
+DISCLAIMER = ("Educational research intelligence. Market data may be delayed or simulated. This is not financial "
+              "advice, a direct trading instruction, a guaranteed outcome, or suitable for order execution.")
 
 
 def _deduplicate_sources(agents: list[object]) -> list[Source]:
@@ -69,10 +70,14 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
         agent_agreement_percent=round(largest / len(directional) * 100, 2) if directional else 0,
         fallback_activations=sum(agent.runtime_mode == "deterministic_fallback" for agent in agents)
             + int(bool(snapshot.fallback_reason)) + int(bool(fundamental and fundamental.retrieval_mode == "tfidf_fallback")),
-        runtime_mode="llm" if any(agent.runtime_mode == "llm" for agent in agents) else "deterministic_fallback",
+        runtime_mode=("xai" if any(agent.runtime_mode == "xai" for agent in agents) else
+                      "llm" if any(agent.runtime_mode == "llm" for agent in agents) else "deterministic_fallback"),
         retrieval_mode=fundamental.retrieval_mode if fundamental and fundamental.retrieval_mode else "unavailable",
-        market_data_mode="simulated" if snapshot.simulated_data else "live",
+        market_data_mode="simulated" if snapshot.simulated_data else snapshot.data_mode,
     )
+    if snapshot.data_status == "unverified_delay":
+        synthesis = synthesis.model_copy(update={"confidence": max(0, synthesis.confidence - 8),
+            "risk_flags": [*synthesis.risk_flags, "Yahoo Finance delay is not independently verified"]})
     reasoning = [
         f"Loaded the stored {profile.risk_profile} profile and validated {snapshot.symbol} {metrics.market_data_mode} market data.",
         f"Ran four independent agents concurrently in {orchestration_latency:.3f} ms.",
@@ -84,11 +89,17 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
         reasoning.append("Reduced confidence because one or more evidence inputs are missing.")
     analysis_id = str(uuid4())
     decision_lab = build_decision_lab(analysis_id, snapshot, profile, agents, synthesis)
+    analytical_units = await expanded_committee(agents, profile, snapshot, synthesis)
+    regime = "high_volatility" if snapshot.volatility >= 30 else "unknown"
+    completed_weights = {agent.agent: agent.confidence for agent in agents if agent.status == AgentStatus.completed}
+    weight_total = sum(completed_weights.values()) or 1
+    synthesis_weights = {name: round(value / weight_total, 4) for name, value in completed_weights.items()}
     response = AnalysisResponse(
         analysis_id=analysis_id, symbol=snapshot.symbol, profile=profile, market_snapshot=snapshot,
         market_signal=market_signal, agents=agents, synthesis=synthesis,
         sources=_deduplicate_sources(agents), reasoning_trace=reasoning, metrics=metrics,
         warnings=list(dict.fromkeys(warnings)), disclaimer=DISCLAIMER, decision_lab=decision_lab,
+        analytical_units=analytical_units, regime=regime, synthesis_weights=synthesis_weights,
     )
     serialized = response.model_dump(mode="json")
     with connection() as conn:
@@ -102,4 +113,18 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
                 metrics.historical_signal_accuracy_percent, metrics.portfolio_concentration_score,
                 metrics.data_completeness_percent, encode_json(serialized["agents"]),
                 encode_json(serialized["sources"]), encode_json(serialized["warnings"]), encode_json(serialized)))
+        features = {"one_day_return": snapshot.one_day_return, "five_day_return": snapshot.five_day_return,
+                    "twenty_day_return": snapshot.twenty_day_return, "volume_ratio": (snapshot.current_volume / snapshot.average_volume if snapshot.average_volume else None),
+                    "volatility": snapshot.volatility, "drawdown": snapshot.drawdown}
+        event_type = "volume_anomaly" if features["volume_ratio"] is not None and features["volume_ratio"] >= 1.4 else "analysis_opened"
+        event_key = f"{snapshot.symbol}:{event_type}:{snapshot.data_timestamp.date().isoformat()}"
+        conn.execute("""INSERT OR IGNORE INTO events
+          (event_key,instrument_key,symbol,event_type,severity,evidence_json,occurred_at) VALUES (?,?,?,?,?,?,?)""",
+          (event_key, snapshot.instrument_key, snapshot.symbol, event_type, "medium" if event_type == "volume_anomaly" else "info",
+           encode_json(features), snapshot.data_timestamp.isoformat()))
+        conn.execute("""INSERT OR IGNORE INTO predictions
+          (analysis_id,instrument_key,symbol,prediction_timestamp,price,direction,raw_confidence,calibrated_confidence,horizon_days,evidence_snapshot_json,version)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)""", (response.analysis_id, snapshot.instrument_key, snapshot.symbol,
+          response.generated_at.isoformat(), snapshot.current_price, market_signal.value, synthesis.confidence, None, 20,
+          encode_json({"sources": [source.model_dump(mode="json") for source in response.sources], "weights": synthesis_weights}), "committee-1.0"))
     return response

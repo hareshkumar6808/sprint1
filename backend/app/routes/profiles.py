@@ -10,12 +10,14 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 def row_to_profile(row: object) -> Profile:
     values = dict(row)  # type: ignore[arg-type]
+    expanded = json.loads(values.get("expanded_profile_json") or "{}")
     return Profile(
         id=values["id"], user_id=values["user_id"], risk_profile=values["risk_profile"],
         investment_horizon_years=values["investment_horizon_years"], maximum_volatility=values["maximum_volatility"],
         portfolio=json.loads(values["portfolio_json"]), watchlist=json.loads(values["watchlist_json"]),
         interaction_history=json.loads(values["interaction_history_json"]),
         created_at=values["created_at"], updated_at=values["updated_at"],
+        **expanded,
     )
 
 
@@ -23,14 +25,16 @@ def row_to_profile(row: object) -> Profile:
 def upsert_profile(payload: ProfileInput) -> Profile:
     with connection() as conn:
         conn.execute("""
-          INSERT INTO user_profiles (user_id,risk_profile,investment_horizon_years,maximum_volatility,portfolio_json,watchlist_json,interaction_history_json)
-          VALUES (?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
+          INSERT INTO user_profiles (user_id,risk_profile,investment_horizon_years,maximum_volatility,portfolio_json,watchlist_json,interaction_history_json,expanded_profile_json)
+          VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
           risk_profile=excluded.risk_profile, investment_horizon_years=excluded.investment_horizon_years,
           maximum_volatility=excluded.maximum_volatility, portfolio_json=excluded.portfolio_json,
           watchlist_json=excluded.watchlist_json, interaction_history_json=excluded.interaction_history_json,
+          expanded_profile_json=excluded.expanded_profile_json,
           updated_at=CURRENT_TIMESTAMP
         """, (payload.user_id, payload.risk_profile, payload.investment_horizon_years, payload.maximum_volatility,
-               encode_json(payload.portfolio), encode_json(payload.watchlist), encode_json(payload.interaction_history)))
+               encode_json(payload.portfolio), encode_json(payload.watchlist), encode_json(payload.interaction_history),
+               encode_json(payload.model_dump(exclude={"user_id", "risk_profile", "investment_horizon_years", "maximum_volatility", "portfolio", "watchlist", "interaction_history"}, exclude_none=True))))
         row = conn.execute("SELECT * FROM user_profiles WHERE user_id=?", (payload.user_id,)).fetchone()
         conn.execute("DELETE FROM profile_holdings WHERE user_id=?", (payload.user_id,))
         conn.execute("DELETE FROM profile_watchlist WHERE user_id=?", (payload.user_id,))

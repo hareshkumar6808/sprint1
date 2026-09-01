@@ -8,8 +8,9 @@ router = APIRouter(prefix="/instruments", tags=["instruments"])
 
 @router.get("/search", response_model=list[InstrumentSearchResult])
 def search(q: str = "", exchange: str | None = Query(default=None, pattern="^(NSE|BSE)$"),
+           category: str | None = Query(default=None, pattern="^(stock|etf_fund|unknown)$"),
            limit: int = Query(default=20, ge=1, le=50)) -> list[InstrumentSearchResult]:
-    return search_instruments(q, exchange, limit)
+    return search_instruments(q, exchange, limit, category)
 
 
 @router.get("/status", response_model=CatalogueStatus)

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import initialize_database
-from app.routes import analysis, decisions, documents, health, instruments, logs, market, profiles, stocks
+from app.routes import analysis, decisions, documents, health, instruments, intelligence, logs, market, profiles, stocks
 from app.services.instruments import seed_fixture_if_empty
 from app.services.instruments import sync_catalogue
 
@@ -32,6 +32,7 @@ app.include_router(health.router)
 for route in (stocks.router, profiles.router, analysis.router, logs.router, decisions.router,
               instruments.router, market.router, documents.router):
     app.include_router(route, prefix="/api/v1")
+app.include_router(intelligence.router, prefix="/api/v1")
 
 
 @app.get("/")
