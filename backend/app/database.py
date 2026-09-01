@@ -46,6 +46,11 @@ def initialize_database() -> None:
           sources_json TEXT NOT NULL, warnings_json TEXT NOT NULL, response_json TEXT,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS user_decisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, ticker TEXT NOT NULL,
+          action TEXT NOT NULL, analysis_id TEXT NOT NULL, current_signal TEXT NOT NULL,
+          confidence INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         """)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(analysis_logs)")}
         if "response_json" not in columns:

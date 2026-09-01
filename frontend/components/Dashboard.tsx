@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHealth, listStocks, loadAnalysisHistory, runAnalysis, saveProfile as persistProfile } from "@/lib/api";
+import { getHealth, listStocks, loadAnalysisHistory, loadDecisions, recordDecision, runAnalysis, saveProfile as persistProfile } from "@/lib/api";
 import { DECISION_LAB_PREVIEW } from "@/lib/decision-lab-fixture";
 import { DecisionLab } from "@/components/DecisionLab";
-import type { AgentOutput, AnalysisResponse, Classification, MarketSnapshot, ProfileInput, RiskProfile, Source } from "@/types/analysis";
+import type { AgentOutput, AnalysisResponse, Classification, DecisionAction, MarketSnapshot, ProfileInput, RiskProfile, Source, UserDecision } from "@/types/analysis";
 
 const SYMBOLS = ["RELIANCE", "TCS", "INFY"];
 const USER_ID = "demo-user";
@@ -35,7 +35,7 @@ function AgentCard({ output }: { output: AgentOutput }) {
     <div className="confidence-track" aria-label={`${output.confidence}% confidence`}><span style={{ width: `${output.confidence}%` }}/></div>
     <p className="agent-summary">{output.summary}</p>
     <details><summary>Inspect evidence, risks & sources <span>+</span></summary><div className="agent-detail"><ListBlock title="Evidence" items={output.evidence}/><ListBlock title="Risks" items={output.risks}/>{output.sources.length > 0 && <div className="list-block"><h4>Sources</h4><ul>{output.sources.map((source) => <li key={`${source.document}-${source.chunk_id}`}>{source.title}<small>{source.document}{source.chunk_id ? ` · ${source.chunk_id}` : ""}</small></li>)}</ul></div>}<ListBlock title="Warnings" items={output.warnings}/></div></details>
-    <footer><span>Latency</span><strong>{output.latency_ms.toFixed(2)} ms</strong></footer>
+    <footer><span>{titleCase(output.runtime_mode ?? "deterministic_fallback")}</span><strong>{output.latency_ms.toFixed(2)} ms</strong></footer>
   </article>;
 }
 
@@ -43,7 +43,7 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
 
 function SourceItem({ source, agents }: { source: Source; agents: AgentOutput[] }) {
   const associated = agents.filter((agent) => agent.sources.some((item) => item.document === source.document && item.chunk_id === source.chunk_id)).map((agent) => AGENT_META[agent.agent][0]);
-  return <li className="source-item"><div><span className="source-symbol">§</span><div><strong>{source.title}</strong><p>{source.document}</p></div></div><dl><div><dt>Date</dt><dd>{source.date}</dd></div>{source.chunk_id && <div><dt>Chunk</dt><dd>{source.chunk_id}</dd></div>}<div><dt>Used by</dt><dd>{associated.join(", ") || "Synthesis"}</dd></div></dl><span className="sim-label">Simulated source</span></li>;
+  return <li className="source-item"><div><span className="source-symbol">§</span><div><strong>{source.title}</strong><p>{source.document}</p>{source.excerpt && <p>{source.excerpt}</p>}</div></div><dl><div><dt>Date</dt><dd>{source.date}</dd></div>{source.chunk_id && <div><dt>Chunk</dt><dd>{source.chunk_id}</dd></div>}{source.relevance_score != null && <div><dt>Relevance</dt><dd>{(source.relevance_score * 100).toFixed(1)}%</dd></div>}<div><dt>Used by</dt><dd>{associated.join(", ") || "Synthesis"}</dd></div></dl><span className="sim-label">Simulated source</span></li>;
 }
 
 export function Dashboard() {
@@ -51,6 +51,7 @@ export function Dashboard() {
   const [version, setVersion] = useState("");
   const [stocks, setStocks] = useState<MarketSnapshot[]>([]);
   const [history, setHistory] = useState<AnalysisResponse[]>([]);
+  const [decisions, setDecisions] = useState<UserDecision[]>([]);
   const [selectedSymbol, setSelectedSymbol] = useState("TCS");
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [risk, setRisk] = useState<RiskProfile>("conservative");
@@ -71,10 +72,11 @@ export function Dashboard() {
   const validation = horizon.trim() === "" ? "Investment horizon is required." : !Number.isFinite(horizonNumber) || !Number.isInteger(horizonNumber) || horizonNumber < 1 || horizonNumber > 50 ? "Investment horizon must be a whole number from 1 to 50 years." : maxVolatility.trim() === "" ? "Maximum volatility is required." : !Number.isFinite(volatilityNumber) || volatilityNumber < 0 || volatilityNumber > 100 ? "Maximum volatility must be a number from 0% to 100%." : holdings.some((holding) => holding.weight.trim() === "" || !Number.isFinite(Number(holding.weight)) || Number(holding.weight) < 0 || Number(holding.weight) > 100) ? "Each portfolio weight must be a number from 0% to 100%." : Math.abs(allocation - 100) > 0.001 ? `Portfolio allocation must total 100%. Current total: ${allocation.toFixed(2).replace(/\.00$/, "")}%.` : "";
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    const results = await Promise.allSettled([getHealth(signal), listStocks(signal), loadAnalysisHistory(USER_ID, signal)]);
+    const results = await Promise.allSettled([getHealth(signal), listStocks(signal), loadAnalysisHistory(USER_ID, signal), loadDecisions(USER_ID, signal)]);
     if (results[0].status === "fulfilled") { setConnected(true); setVersion(results[0].value.version); } else setConnected(false);
     if (results[1].status === "fulfilled") setStocks(results[1].value);
     if (results[2].status === "fulfilled") setHistory(results[2].value);
+    if (results[3].status === "fulfilled") setDecisions(results[3].value);
   }, []);
 
   useEffect(() => { const controller = new AbortController(); void refresh(controller.signal); return () => controller.abort(); }, [refresh]);
@@ -101,6 +103,7 @@ export function Dashboard() {
   function normalizeHolding(index: number) { setHoldings((current) => current.map((holding, itemIndex) => itemIndex === index ? { ...holding, weight: normalizedNumber(holding.weight) } : holding)); }
   function addHolding() { const symbol = SYMBOLS.find((item) => !holdings.some((holding) => holding.symbol === item)); if (symbol) setHoldings((current) => [...current, { symbol, weight: "0" }]); }
   function reopen(item: AnalysisResponse) { setAnalysis(item); setSelectedSymbol(item.symbol); document.getElementById("results")?.scrollIntoView({ behavior: "smooth" }); }
+  async function decide(action: DecisionAction) { if (!analysis) return; try { await recordDecision(analysis, action); setDecisions(await loadDecisions(USER_ID)); setMessage({ kind: "success", text: `${action} decision recorded.` }); } catch (error) { setMessage({ kind: "error", text: error instanceof Error ? error.message : "Decision could not be recorded." }); } }
 
   const snapshot = analysis?.market_snapshot;
   const technical = analysis?.agents.find((agent) => agent.agent === "technical");
@@ -136,7 +139,11 @@ export function Dashboard() {
       {(analysis.synthesis.conflicts.length > 0 || analysis.synthesis.missing_evidence.length > 0) && <div className="warning-banner"><span>!</span><div><strong>{analysis.synthesis.missing_evidence.length ? "Degraded-data analysis completed" : "Conflicting signals detected"}</strong><p>{analysis.synthesis.missing_evidence.length ? "The pipeline continued, but missing inputs reduced confidence and are disclosed below." : "Independent agents reached different classifications. Review the evidence before interpreting the synthesis."}</p></div></div>}
       <div className="result-heading"><div><p className="eyebrow">Analysis · {analysis.symbol}</p><h2>{analysis.market_snapshot.company_name.replace(" (Simulated)", "")}</h2><p>Generated {formatDate(analysis.generated_at)} · Analysis ID {analysis.analysis_id.slice(0, 8)}</p></div><Tag value={analysis.market_signal}/></div>
 
+      <section className="runtime-strip" aria-label="Active runtime modes"><span>Market: <strong>{titleCase(analysis.metrics.market_data_mode ?? (analysis.market_snapshot.simulated_data ? "simulated" : "live"))}</strong></span><span>Agents: <strong>{titleCase(analysis.metrics.runtime_mode ?? "deterministic_fallback")}</strong></span><span>Retrieval: <strong>{titleCase(analysis.metrics.retrieval_mode ?? "unavailable")}</strong></span>{analysis.market_snapshot.fallback_reason && <span>Fallback: <strong>{analysis.market_snapshot.fallback_reason}</strong></span>}</section>
+
       <section className="synthesis-card"><div className="synthesis-top"><div><p className="eyebrow">Personalized synthesis</p><div className="synthesis-label"><Tag value={analysis.synthesis.classification}/><strong>{analysis.synthesis.confidence}%</strong><span>confidence</span></div></div><div className="risk-used"><span>Risk profile used</span><strong>{titleCase(analysis.profile.risk_profile)}</strong></div></div>{analysis.synthesis.classification === "insufficient_data" ? <h3>Insufficient verified evidence to produce a supported conclusion.</h3> : <h3>{analysis.synthesis.summary}</h3>}<blockquote>{analysis.synthesis.personalized_guidance}</blockquote><div className="synthesis-grid"><ListBlock title="Conflicting signals" items={analysis.synthesis.conflicts} empty="No directional conflict detected"/><ListBlock title="Risk flags" items={analysis.synthesis.risk_flags}/><ListBlock title="Missing evidence" items={analysis.synthesis.missing_evidence} empty="No required evidence missing"/></div><a className="lab-entry-button" href="#decision-lab">Open Decision Lab <span aria-hidden="true">→</span></a></section>
+
+      <section className="decision-controls"><div><p className="eyebrow">Record your decision</p><h3>What will you do next?</h3></div><div>{(["BUY", "SELL", "WATCH", "IGNORE", "INVESTIGATE"] as DecisionAction[]).map((action) => <button key={action} onClick={() => void decide(action)}>{action}</button>)}</div></section>
 
       <DecisionLab data={analysis.decision_lab ?? DECISION_LAB_PREVIEW} analysis={analysis} preview={!analysis.decision_lab}/>
 
@@ -146,12 +153,13 @@ export function Dashboard() {
 
       <section className="panel-section agent-section"><div className="panel-heading"><div><p className="eyebrow">Specialist research</p><h3>Four independent agent reports</h3></div><span>{analysis.metrics.agents_completed}/{analysis.metrics.agents_expected} completed</span></div><div className="agent-grid">{analysis.agents.map((agent) => <AgentCard output={agent} key={agent.agent}/>)}</div></section>
 
-      <section className="two-panel-grid"><div className="panel-section reasoning-panel"><details open><summary><div><p className="eyebrow">Explainability</p><h3>How the agents reached this conclusion</h3></div><span>＋</span></summary><ol>{analysis.reasoning_trace.map((step, index) => { const category = /market|validated/i.test(step) ? "Raw market observations" : /filing|retriev/i.test(step) ? "Retrieved filing evidence" : /concurrent|agent/i.test(step) ? "Independent agent classifications" : /conflict/i.test(step) ? "Conflict detection" : /profile|risk/i.test(step) ? "Risk-profile adjustment" : "Final synthesis"; return <li key={`${step}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><div><small>{category}</small><p>{step}</p></div></li>; })}</ol></details></div><div className="panel-section metrics-panel"><div className="panel-heading"><div><p className="eyebrow">Observed performance</p><h3>Analysis metrics</h3></div></div><div className="metrics-grid"><Metric label="Total latency" value={`${analysis.metrics.latency_ms.toFixed(2)} ms`}/><Metric label="Historical accuracy" value={`${analysis.metrics.historical_signal_accuracy_percent.toFixed(1)}%`} note={analysis.metrics.historical_signal_evaluated ? `${analysis.metrics.historical_signal_correct} of ${analysis.metrics.historical_signal_evaluated} fixture signals correct · not live predictive performance` : "Fixture-based historical evaluation · sample unavailable for this older saved analysis"}/><Metric label="Portfolio concentration" value={analysis.metrics.portfolio_concentration_score.toFixed(1)}/><Metric label="Data completeness" value={`${analysis.metrics.data_completeness_percent.toFixed(0)}%`}/><Metric label="Agents complete" value={`${analysis.metrics.agents_completed} / ${analysis.metrics.agents_expected}`}/></div></div></section>
+      <section className="two-panel-grid"><div className="panel-section reasoning-panel"><details open><summary><div><p className="eyebrow">Explainability</p><h3>How the agents reached this conclusion</h3></div><span>＋</span></summary><ol>{analysis.reasoning_trace.map((step, index) => { const category = /market|validated/i.test(step) ? "Raw market observations" : /filing|retriev/i.test(step) ? "Retrieved filing evidence" : /concurrent|agent/i.test(step) ? "Independent agent classifications" : /conflict/i.test(step) ? "Conflict detection" : /profile|risk/i.test(step) ? "Risk-profile adjustment" : "Final synthesis"; return <li key={`${step}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><div><small>{category}</small><p>{step}</p></div></li>; })}</ol></details></div><div className="panel-section metrics-panel"><div className="panel-heading"><div><p className="eyebrow">Observed performance</p><h3>Actual session metrics</h3></div></div><div className="metrics-grid"><Metric label="Total latency" value={`${analysis.metrics.latency_ms.toFixed(2)} ms`}/><Metric label="Retrieval latency" value={`${(analysis.metrics.retrieval_latency_ms ?? 0).toFixed(2)} ms`}/><Metric label="Retrieved chunks" value={`${analysis.metrics.chunks_retrieved ?? 0}`}/><Metric label="Evidence coverage" value={`${(analysis.metrics.evidence_coverage_percent ?? 0).toFixed(0)}%`}/><Metric label="Agent agreement" value={`${(analysis.metrics.agent_agreement_percent ?? 0).toFixed(0)}%`}/><Metric label="Fallback activations" value={`${analysis.metrics.fallback_activations ?? 0}`}/><Metric label="Portfolio concentration" value={analysis.metrics.portfolio_concentration_score.toFixed(1)}/><Metric label="Data completeness" value={`${analysis.metrics.data_completeness_percent.toFixed(0)}%`}/><Metric label="Agents complete" value={`${analysis.metrics.agents_completed} / ${analysis.metrics.agents_expected}`}/><Metric label="Historical accuracy" value={`${analysis.metrics.historical_signal_accuracy_percent.toFixed(1)}%`} note={analysis.metrics.historical_signal_evaluated ? `${analysis.metrics.historical_signal_correct} of ${analysis.metrics.historical_signal_evaluated} fixture signals correct · not live predictive performance` : "Fixture sample unavailable"}/></div></div></section>
 
       <section className="panel-section sources-panel"><div className="panel-heading"><div><p className="eyebrow">Traceable evidence</p><h3>Sources used in this analysis</h3></div><span>{analysis.sources.length} cited records</span></div>{analysis.sources.length ? <ul className="source-list">{analysis.sources.map((source) => <SourceItem source={source} agents={analysis.agents} key={`${source.document}-${source.chunk_id}`}/>)}</ul> : <div className="empty-panel"><strong>No cited evidence available</strong><p>The interface will not substitute uncited claims.</p></div>}<details className="evidence-drawer"><summary>View all evidence used by synthesis <span>＋</span></summary><ul>{analysis.synthesis.evidence_used.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></details></section>
     </section>}
 
     <section className="history-section"><div className="panel-heading"><div><p className="eyebrow">Persisted research</p><h3>Analysis history</h3></div><button className="text-button" onClick={() => void refresh()}>↻ Refresh history</button></div>{history.length ? <div className="history-list">{history.map((item) => <button key={item.analysis_id} onClick={() => reopen(item)}><span><strong>{item.symbol}</strong><small>{formatDate(item.generated_at)}</small></span><Tag value={item.synthesis.classification}/><span><strong>{item.synthesis.confidence}%</strong><small>Confidence</small></span><span><strong>{titleCase(item.profile.risk_profile)}</strong><small>Risk profile</small></span><span><strong>{item.metrics.data_completeness_percent.toFixed(0)}%</strong><small>Complete</small></span><b>Open →</b></button>)}</div> : <div className="empty-panel"><span>⌁</span><strong>No saved analyses yet</strong><p>Completed reports will appear here and can be reopened without rerunning the agents.</p></div>}</section>
+    <section className="history-section"><div className="panel-heading"><div><p className="eyebrow">Persisted actions</p><h3>Recent decisions</h3></div></div>{decisions.length ? <div className="decision-history">{decisions.slice(0, 8).map((item) => <article key={item.id}><strong>{item.action}</strong><span>{item.ticker}</span><small>{item.current_signal} · {item.confidence}% · {formatDate(item.created_at)}</small></article>)}</div> : <div className="empty-panel"><strong>No decisions recorded</strong><p>Choose an action from a completed analysis.</p></div>}</section>
     <footer className="site-footer"><div className="brand"><span className="brand-mark">F</span><span><strong>FinSync</strong><small>Intelligence</small></span></div><p>Built for transparent, educational market research with visibly simulated evidence.</p><a href="#top">Back to top ↑</a></footer>
   </main>;
 }

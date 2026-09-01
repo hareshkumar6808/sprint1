@@ -7,6 +7,7 @@ __pycache__/
 htmlcov/
 *.db
 *.sqlite*
+backend/app/data/filing_vectors.json
 .env
 .env.local
 node_modules/
@@ -16,4 +17,3 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
-
