@@ -1,2 +1,11 @@
 import { Dashboard } from "@/components/Dashboard";
-export default function Home() { return <Dashboard/>; }
+import { AppLayout } from "@/components/layout/AppLayout";
+
+export default function Home() {
+  return (
+    <AppLayout currentPage="overview">
+      <Dashboard />
+    </AppLayout>
+  );
+}
+
