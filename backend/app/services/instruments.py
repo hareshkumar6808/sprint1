@@ -55,9 +55,11 @@ def parse_instruments(records: list[dict[str, Any]], synced_at: datetime | None 
         if row.get("segment") not in {"NSE_EQ", "BSE_EQ"} or row.get("instrument_type") != "EQ":
             continue
         try:
-            isin = row.get("isin")
+            instrument_key = str(row["instrument_key"])
+            key_identity = instrument_key.split("|", 1)[1] if "|" in instrument_key else ""
+            isin = row.get("isin") or (key_identity if key_identity.upper().startswith(("INE", "INF")) else None)
             category = "stock" if str(isin or "").upper().startswith("INE") else ("etf_fund" if str(isin or "").upper().startswith("INF") else "unknown")
-            parsed.append(Instrument(instrument_key=str(row["instrument_key"]), exchange=row["exchange"],
+            parsed.append(Instrument(instrument_key=instrument_key, exchange=row["exchange"],
                 segment=row["segment"], symbol=str(row["trading_symbol"]).upper(), name=str(row["name"]),
                 isin=isin, tick_size=row.get("tick_size"), lot_size=row.get("lot_size"),
                 instrument_type=str(row["instrument_type"]), category=category, last_synced_at=timestamp))

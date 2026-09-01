@@ -112,6 +112,15 @@ def initialize_database() -> None:
         instrument_columns = {row["name"] for row in conn.execute("PRAGMA table_info(instruments)")}
         if "category" not in instrument_columns:
             conn.execute("ALTER TABLE instruments ADD COLUMN category TEXT NOT NULL DEFAULT 'unknown'")
+        # Some Upstox master records omit the separate ISIN field while retaining it
+        # as the stable identity after `|` in instrument_key. Recover it so category
+        # filters do not hide valid stocks/ETFs already cached in older databases.
+        conn.execute("""UPDATE instruments SET isin=substr(instrument_key,instr(instrument_key,'|')+1)
+          WHERE (isin IS NULL OR isin='') AND instr(instrument_key,'|')>0 AND
+          (upper(substr(instrument_key,instr(instrument_key,'|')+1)) LIKE 'INE%' OR
+           upper(substr(instrument_key,instr(instrument_key,'|')+1)) LIKE 'INF%')""")
+        conn.execute("UPDATE instruments SET category='stock' WHERE upper(isin) LIKE 'INE%' AND category!='stock'")
+        conn.execute("UPDATE instruments SET category='etf_fund' WHERE upper(isin) LIKE 'INF%' AND category!='etf_fund'")
         profile_columns = {row["name"] for row in conn.execute("PRAGMA table_info(user_profiles)")}
         if "expanded_profile_json" not in profile_columns:
             conn.execute("ALTER TABLE user_profiles ADD COLUMN expanded_profile_json TEXT NOT NULL DEFAULT '{}'")
