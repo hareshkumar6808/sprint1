@@ -10,8 +10,11 @@ htmlcov/
 backend/app/data/filing_vectors.json
 .env
 .env.local
+.env.production.local
 node_modules/
 .next/
+build/
+dist/
 out/
 coverage/
 *.log
