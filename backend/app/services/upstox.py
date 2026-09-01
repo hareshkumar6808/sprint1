@@ -51,16 +51,16 @@ class UpstoxProvider:
     def _timestamp(value: object) -> datetime | None:
         if value in (None, ""):
             return None
+        try:
+            numeric = int(str(value)); return datetime.fromtimestamp(numeric / 1000, timezone.utc)
+        except (TypeError, ValueError, OSError):
+            return None
 
     @staticmethod
     def _market_status(provider_time: datetime | None) -> str:
         when = (provider_time or datetime.now(timezone.utc)).astimezone(ZoneInfo("Asia/Kolkata"))
         minutes = when.hour * 60 + when.minute
         return "closed" if when.weekday() >= 5 or minutes < 9 * 60 + 15 or minutes > 15 * 60 + 30 else "unknown"
-        try:
-            numeric = int(str(value)); return datetime.fromtimestamp(numeric / 1000, timezone.utc)
-        except (TypeError, ValueError, OSError):
-            return None
 
     def quotes(self, instruments: list[Instrument]) -> list[MarketQuote]:
         now = monotonic(); results: list[MarketQuote] = []; missing: list[Instrument] = []

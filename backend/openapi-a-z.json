@@ -1,0 +1,3917 @@
+{
+  "components": {
+    "schemas": {
+      "AgentOutput": {
+        "properties": {
+          "agent": {
+            "enum": [
+              "technical",
+              "sentiment",
+              "fundamental",
+              "behavioral",
+              "regulatory",
+              "macro_regime",
+              "portfolio_risk",
+              "devils_advocate",
+              "missing_information",
+              "evidence_verification",
+              "committee",
+              "synthesis"
+            ],
+            "title": "Agent",
+            "type": "string"
+          },
+          "chunks_retrieved": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Chunks Retrieved",
+            "type": "integer"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "missing_information": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Information",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "retrieval_latency_ms": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Retrieval Latency Ms",
+            "type": "number"
+          },
+          "retrieval_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "semantic",
+                  "tfidf_fallback",
+                  "unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieval Mode"
+          },
+          "risks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risks",
+            "type": "array"
+          },
+          "role": {
+            "default": "specialist",
+            "title": "Role",
+            "type": "string"
+          },
+          "runtime_mode": {
+            "default": "deterministic_fallback",
+            "enum": [
+              "xai",
+              "llm",
+              "deterministic_fallback",
+              "degraded",
+              "disabled"
+            ],
+            "title": "Runtime Mode",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "version": {
+            "default": "1.0",
+            "title": "Version",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent",
+          "status",
+          "classification",
+          "confidence",
+          "summary",
+          "latency_ms"
+        ],
+        "title": "AgentOutput",
+        "type": "object"
+      },
+      "AgentStatus": {
+        "enum": [
+          "completed",
+          "unavailable",
+          "degraded",
+          "failed"
+        ],
+        "title": "AgentStatus",
+        "type": "string"
+      },
+      "AnalysisMetrics": {
+        "properties": {
+          "agent_agreement_percent": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Agent Agreement Percent",
+            "type": "number"
+          },
+          "agents_completed": {
+            "title": "Agents Completed",
+            "type": "integer"
+          },
+          "agents_expected": {
+            "title": "Agents Expected",
+            "type": "integer"
+          },
+          "chunks_retrieved": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Chunks Retrieved",
+            "type": "integer"
+          },
+          "data_completeness_percent": {
+            "title": "Data Completeness Percent",
+            "type": "number"
+          },
+          "documents_retrieved": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Documents Retrieved",
+            "type": "integer"
+          },
+          "evidence_coverage_percent": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Evidence Coverage Percent",
+            "type": "number"
+          },
+          "fallback_activations": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Fallback Activations",
+            "type": "integer"
+          },
+          "historical_signal_accuracy_percent": {
+            "title": "Historical Signal Accuracy Percent",
+            "type": "number"
+          },
+          "historical_signal_correct": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Historical Signal Correct",
+            "type": "integer"
+          },
+          "historical_signal_evaluated": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Historical Signal Evaluated",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "market_data_mode": {
+            "default": "simulated",
+            "enum": [
+              "live",
+              "free",
+              "delayed",
+              "unverified_delay",
+              "cached",
+              "simulated"
+            ],
+            "title": "Market Data Mode",
+            "type": "string"
+          },
+          "per_agent_latency_ms": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Per Agent Latency Ms",
+            "type": "object"
+          },
+          "portfolio_concentration_score": {
+            "title": "Portfolio Concentration Score",
+            "type": "number"
+          },
+          "retrieval_latency_ms": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Retrieval Latency Ms",
+            "type": "number"
+          },
+          "retrieval_mode": {
+            "default": "unavailable",
+            "enum": [
+              "semantic",
+              "tfidf_fallback",
+              "unavailable"
+            ],
+            "title": "Retrieval Mode",
+            "type": "string"
+          },
+          "runtime_mode": {
+            "default": "deterministic_fallback",
+            "enum": [
+              "xai",
+              "llm",
+              "deterministic_fallback",
+              "degraded",
+              "disabled"
+            ],
+            "title": "Runtime Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latency_ms",
+          "historical_signal_accuracy_percent",
+          "portfolio_concentration_score",
+          "data_completeness_percent",
+          "agents_completed",
+          "agents_expected"
+        ],
+        "title": "AnalysisMetrics",
+        "type": "object"
+      },
+      "AnalysisResponse": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentOutput"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "analysis_id": {
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "analytical_units": {
+            "items": {
+              "$ref": "#/components/schemas/AgentOutput"
+            },
+            "title": "Analytical Units",
+            "type": "array"
+          },
+          "decision_lab": {
+            "$ref": "#/components/schemas/DecisionLab"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "market_signal": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "market_snapshot": {
+            "$ref": "#/components/schemas/MarketSnapshot"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AnalysisMetrics"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "reasoning_trace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoning Trace",
+            "type": "array"
+          },
+          "regime": {
+            "default": "unknown",
+            "enum": [
+              "trending",
+              "range_bound",
+              "high_volatility",
+              "broad_market_stress",
+              "unknown"
+            ],
+            "title": "Regime",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "synthesis": {
+            "$ref": "#/components/schemas/Synthesis"
+          },
+          "synthesis_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Synthesis Weights",
+            "type": "object"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "analysis_id",
+          "symbol",
+          "profile",
+          "market_snapshot",
+          "market_signal",
+          "agents",
+          "synthesis",
+          "sources",
+          "reasoning_trace",
+          "metrics",
+          "decision_lab",
+          "warnings",
+          "disclaimer"
+        ],
+        "title": "AnalysisResponse",
+        "type": "object"
+      },
+      "AnalyzeRequest": {
+        "properties": {
+          "instrument_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instrument Key"
+          },
+          "symbol": {
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "symbol"
+        ],
+        "title": "AnalyzeRequest",
+        "type": "object"
+      },
+      "Candle": {
+        "properties": {
+          "adjusted_close": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Close"
+          },
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "exchange_timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange Timezone"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "open": {
+            "title": "Open",
+            "type": "number"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "volume": {
+            "title": "Volume",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "Candle",
+        "type": "object"
+      },
+      "CatalogueStatus": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "instrument_count": {
+            "minimum": 0.0,
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "cached",
+              "failed",
+              "never"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "status",
+          "instrument_count"
+        ],
+        "title": "CatalogueStatus",
+        "type": "object"
+      },
+      "Classification": {
+        "enum": [
+          "bullish",
+          "neutral",
+          "bearish",
+          "strong",
+          "mixed",
+          "weak",
+          "positive",
+          "negative",
+          "suitable",
+          "unsuitable",
+          "insufficient_data"
+        ],
+        "title": "Classification",
+        "type": "string"
+      },
+      "CommitteeResult": {
+        "properties": {
+          "abstain": {
+            "minimum": 0.0,
+            "title": "Abstain",
+            "type": "integer"
+          },
+          "consensus_score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Consensus Score",
+            "type": "integer"
+          },
+          "fragility_score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Fragility Score",
+            "type": "integer"
+          },
+          "oppose": {
+            "minimum": 0.0,
+            "title": "Oppose",
+            "type": "integer"
+          },
+          "support": {
+            "minimum": 0.0,
+            "title": "Support",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "support",
+          "oppose",
+          "abstain",
+          "consensus_score",
+          "fragility_score"
+        ],
+        "title": "CommitteeResult",
+        "type": "object"
+      },
+      "Counterfactual": {
+        "properties": {
+          "diversification_after": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Diversification After",
+            "type": "integer"
+          },
+          "diversification_before": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Diversification Before",
+            "type": "integer"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "investment_amount": {
+            "minimum": 0.0,
+            "title": "Investment Amount",
+            "type": "integer"
+          },
+          "risk_after": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Risk After",
+            "type": "integer"
+          },
+          "risk_before": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Risk Before",
+            "type": "integer"
+          },
+          "sector_exposure_after": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Sector Exposure After",
+            "type": "integer"
+          },
+          "sector_exposure_before": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Sector Exposure Before",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "investment_amount",
+          "risk_before",
+          "risk_after",
+          "sector_exposure_before",
+          "sector_exposure_after",
+          "diversification_before",
+          "diversification_after",
+          "interpretation"
+        ],
+        "title": "Counterfactual",
+        "type": "object"
+      },
+      "DecisionEvent": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ],
+        "title": "DecisionEvent",
+        "type": "object"
+      },
+      "DecisionFactor": {
+        "properties": {
+          "factor": {
+            "title": "Factor",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "factor",
+          "weight"
+        ],
+        "title": "DecisionFactor",
+        "type": "object"
+      },
+      "DecisionInput": {
+        "properties": {
+          "action": {
+            "enum": [
+              "BUY",
+              "SELL",
+              "WATCH",
+              "IGNORE",
+              "INVESTIGATE"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "current_signal": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "ticker": {
+            "minLength": 1,
+            "title": "Ticker",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "ticker",
+          "action",
+          "analysis_id",
+          "current_signal",
+          "confidence"
+        ],
+        "title": "DecisionInput",
+        "type": "object"
+      },
+      "DecisionLab": {
+        "properties": {
+          "change_our_mind": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Change Our Mind",
+            "type": "array"
+          },
+          "committee": {
+            "$ref": "#/components/schemas/CommitteeResult"
+          },
+          "counterfactual": {
+            "$ref": "#/components/schemas/Counterfactual"
+          },
+          "decision_dna": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionFactor"
+            },
+            "title": "Decision Dna",
+            "type": "array"
+          },
+          "devils_advocate": {
+            "$ref": "#/components/schemas/DevilsAdvocate"
+          },
+          "event": {
+            "$ref": "#/components/schemas/DecisionEvent"
+          },
+          "evidence_verification": {
+            "$ref": "#/components/schemas/EvidenceVerification"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "missing_information": {
+            "$ref": "#/components/schemas/MissingInformation"
+          },
+          "replay": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStep"
+            },
+            "title": "Replay",
+            "type": "array"
+          },
+          "stress_test": {
+            "$ref": "#/components/schemas/StressTest"
+          }
+        },
+        "required": [
+          "investigation_id",
+          "event",
+          "committee",
+          "devils_advocate",
+          "evidence_verification",
+          "missing_information",
+          "decision_dna",
+          "change_our_mind",
+          "stress_test",
+          "counterfactual",
+          "replay"
+        ],
+        "title": "DecisionLab",
+        "type": "object"
+      },
+      "DevilsAdvocate": {
+        "properties": {
+          "challenge": {
+            "title": "Challenge",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal",
+          "confidence",
+          "challenge",
+          "evidence"
+        ],
+        "title": "DevilsAdvocate",
+        "type": "object"
+      },
+      "DocumentInput": {
+        "properties": {
+          "attribution": {
+            "minLength": 1,
+            "title": "Attribution",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "content_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Base64"
+          },
+          "document_type": {
+            "minLength": 1,
+            "title": "Document Type",
+            "type": "string"
+          },
+          "instrument_key": {
+            "title": "Instrument Key",
+            "type": "string"
+          },
+          "media_type": {
+            "default": "text/plain",
+            "title": "Media Type",
+            "type": "string"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "simulated": {
+            "default": false,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "source_date": {
+            "format": "date",
+            "title": "Source Date",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "instrument_key",
+          "symbol",
+          "company_name",
+          "title",
+          "source_date",
+          "document_type",
+          "attribution"
+        ],
+        "title": "DocumentInput",
+        "type": "object"
+      },
+      "EvidenceVerification": {
+        "properties": {
+          "coverage_score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Coverage Score",
+            "type": "integer"
+          },
+          "total_claims": {
+            "minimum": 0.0,
+            "title": "Total Claims",
+            "type": "integer"
+          },
+          "unsupported_claims": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsupported Claims",
+            "type": "array"
+          },
+          "verified_claims": {
+            "minimum": 0.0,
+            "title": "Verified Claims",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "coverage_score",
+          "verified_claims",
+          "total_claims",
+          "unsupported_claims"
+        ],
+        "title": "EvidenceVerification",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InstrumentSearchResult": {
+        "properties": {
+          "category": {
+            "default": "unknown",
+            "enum": [
+              "stock",
+              "etf_fund",
+              "unknown"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "exchange": {
+            "enum": [
+              "NSE",
+              "BSE"
+            ],
+            "title": "Exchange",
+            "type": "string"
+          },
+          "instrument_key": {
+            "title": "Instrument Key",
+            "type": "string"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "isin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isin"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_key",
+          "exchange",
+          "symbol",
+          "name",
+          "instrument_type"
+        ],
+        "title": "InstrumentSearchResult",
+        "type": "object"
+      },
+      "JournalInput": {
+        "properties": {
+          "action": {
+            "enum": [
+              "BUY",
+              "SELL",
+              "WATCH",
+              "IGNORE",
+              "INVESTIGATE",
+              "thesis_recorded"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "expected_catalyst": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Catalyst"
+          },
+          "expected_holding_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Holding Period"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "reconsideration_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconsideration Condition"
+          },
+          "symbol": {
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "thesis": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Thesis",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "symbol",
+          "thesis",
+          "action",
+          "confidence"
+        ],
+        "title": "JournalInput",
+        "type": "object"
+      },
+      "MarketQuote": {
+        "properties": {
+          "absolute_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absolute Change"
+          },
+          "age_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Seconds"
+          },
+          "cache_status": {
+            "default": "miss",
+            "title": "Cache Status",
+            "type": "string"
+          },
+          "close": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "data_mode": {
+            "enum": [
+              "live",
+              "delayed",
+              "unverified_delay",
+              "cached",
+              "simulated"
+            ],
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "data_status": {
+            "default": "unverified",
+            "title": "Data Status",
+            "type": "string"
+          },
+          "disclaimer": {
+            "default": "Educational research only; not financial advice or order execution.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "exchange": {
+            "title": "Exchange",
+            "type": "string"
+          },
+          "exchange_timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange Timezone"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "freshness": {
+            "title": "Freshness",
+            "type": "string"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "instrument_key": {
+            "title": "Instrument Key",
+            "type": "string"
+          },
+          "last_price": {
+            "title": "Last Price",
+            "type": "number"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "market_status": {
+            "default": "unknown",
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ],
+            "title": "Market Status",
+            "type": "string"
+          },
+          "open": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open"
+          },
+          "percentage_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage Change"
+          },
+          "previous_close": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Close"
+          },
+          "provider_name": {
+            "title": "Provider Name",
+            "type": "string"
+          },
+          "provider_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Symbol"
+          },
+          "provider_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Timestamp"
+          },
+          "retrieved_at": {
+            "format": "date-time",
+            "title": "Retrieved At",
+            "type": "string"
+          },
+          "source_class": {
+            "default": "Market-data provider",
+            "title": "Source Class",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "instrument_key",
+          "exchange",
+          "symbol",
+          "company_name",
+          "last_price",
+          "retrieved_at",
+          "provider_name",
+          "data_mode",
+          "freshness"
+        ],
+        "title": "MarketQuote",
+        "type": "object"
+      },
+      "MarketSnapshot": {
+        "properties": {
+          "age_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Seconds"
+          },
+          "average_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Volume"
+          },
+          "cache_status": {
+            "default": "not_applicable",
+            "title": "Cache Status",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "current_price": {
+            "title": "Current Price",
+            "type": "number"
+          },
+          "current_volume": {
+            "title": "Current Volume",
+            "type": "integer"
+          },
+          "data_mode": {
+            "default": "simulated",
+            "enum": [
+              "live",
+              "delayed",
+              "unverified_delay",
+              "cached",
+              "simulated"
+            ],
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "data_status": {
+            "default": "simulated",
+            "title": "Data Status",
+            "type": "string"
+          },
+          "data_timestamp": {
+            "format": "date-time",
+            "title": "Data Timestamp",
+            "type": "string"
+          },
+          "debt_to_equity_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt To Equity Ratio"
+          },
+          "disclaimer": {
+            "default": "Educational research only; not financial advice or order execution.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "drawdown": {
+            "title": "Drawdown",
+            "type": "number"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "five_day_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Five Day Return"
+          },
+          "freshness": {
+            "default": "fixture_timestamp",
+            "title": "Freshness",
+            "type": "string"
+          },
+          "indicator_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Indicator Warnings",
+            "type": "array"
+          },
+          "instrument_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instrument Key"
+          },
+          "market_status": {
+            "default": "unknown",
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ],
+            "title": "Market Status",
+            "type": "string"
+          },
+          "one_day_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "One Day Return"
+          },
+          "pe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pe Ratio"
+          },
+          "previous_close": {
+            "title": "Previous Close",
+            "type": "number"
+          },
+          "provider_name": {
+            "default": "local_simulated_fixture",
+            "title": "Provider Name",
+            "type": "string"
+          },
+          "provider_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Symbol"
+          },
+          "retrieved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieved At"
+          },
+          "revenue_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Growth"
+          },
+          "rsi": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rsi"
+          },
+          "simulated_data": {
+            "title": "Simulated Data",
+            "type": "boolean"
+          },
+          "source_class": {
+            "default": "Simulated local fixture",
+            "title": "Source Class",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "twenty_day_moving_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Twenty Day Moving Average"
+          },
+          "twenty_day_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Twenty Day Return"
+          },
+          "volatility": {
+            "title": "Volatility",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "company_name",
+          "current_price",
+          "previous_close",
+          "five_day_return",
+          "twenty_day_return",
+          "twenty_day_moving_average",
+          "current_volume",
+          "average_volume",
+          "volatility",
+          "drawdown",
+          "pe_ratio",
+          "revenue_growth",
+          "debt_to_equity_ratio",
+          "data_timestamp",
+          "simulated_data"
+        ],
+        "title": "MarketSnapshot",
+        "type": "object"
+      },
+      "MissingInformation": {
+        "properties": {
+          "confidence_penalty": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence Penalty",
+            "type": "integer"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "gaps",
+          "confidence_penalty"
+        ],
+        "title": "MissingInformation",
+        "type": "object"
+      },
+      "PortfolioSimulationInput": {
+        "properties": {
+          "holdings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "proposed_allocation": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Proposed Allocation",
+            "type": "number"
+          },
+          "proposed_symbol": {
+            "title": "Proposed Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "holdings",
+          "proposed_symbol",
+          "proposed_allocation"
+        ],
+        "title": "PortfolioSimulationInput",
+        "type": "object"
+      },
+      "Profile": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "derivatives_experience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derivatives Experience"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "interaction_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Interaction History",
+            "type": "array"
+          },
+          "investment_horizon_years": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Investment Horizon Years",
+            "type": "integer"
+          },
+          "maximum_acceptable_loss": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Acceptable Loss"
+          },
+          "maximum_volatility": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Maximum Volatility",
+            "type": "number"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "portfolio": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Portfolio",
+            "type": "array"
+          },
+          "portfolio_size_bracket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Size Bracket"
+          },
+          "risk_profile": {
+            "enum": [
+              "conservative",
+              "moderate",
+              "aggressive"
+            ],
+            "title": "Risk Profile",
+            "type": "string"
+          },
+          "sector_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sector Preferences",
+            "type": "array"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "trading_frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trading Frequency"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          },
+          "watchlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Watchlist",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user_id",
+          "risk_profile",
+          "investment_horizon_years",
+          "maximum_volatility",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Profile",
+        "type": "object"
+      },
+      "ProfileInput": {
+        "properties": {
+          "derivatives_experience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derivatives Experience"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "interaction_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Interaction History",
+            "type": "array"
+          },
+          "investment_horizon_years": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Investment Horizon Years",
+            "type": "integer"
+          },
+          "maximum_acceptable_loss": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Acceptable Loss"
+          },
+          "maximum_volatility": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Maximum Volatility",
+            "type": "number"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "portfolio": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Portfolio",
+            "type": "array"
+          },
+          "portfolio_size_bracket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Size Bracket"
+          },
+          "risk_profile": {
+            "enum": [
+              "conservative",
+              "moderate",
+              "aggressive"
+            ],
+            "title": "Risk Profile",
+            "type": "string"
+          },
+          "sector_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sector Preferences",
+            "type": "array"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "trading_frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trading Frequency"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          },
+          "watchlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Watchlist",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user_id",
+          "risk_profile",
+          "investment_horizon_years",
+          "maximum_volatility"
+        ],
+        "title": "ProfileInput",
+        "type": "object"
+      },
+      "ReplayStep": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "order": {
+            "minimum": 1.0,
+            "title": "Order",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "degraded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order",
+          "stage",
+          "status",
+          "message"
+        ],
+        "title": "ReplayStep",
+        "type": "object"
+      },
+      "ShockInput": {
+        "properties": {
+          "holdings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "scenario": {
+            "enum": [
+              "nifty_decline",
+              "sector_decline",
+              "oil_increase",
+              "inr_depreciation",
+              "interest_rate_increase",
+              "user_defined"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "shock_percent": {
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Shock Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "scenario",
+          "shock_percent"
+        ],
+        "title": "ShockInput",
+        "type": "object"
+      },
+      "Source": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "document": {
+            "title": "Document",
+            "type": "string"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt"
+          },
+          "relevance_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance Score"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "document",
+          "date"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "StressTest": {
+        "properties": {
+          "normal_confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Normal Confidence",
+            "type": "integer"
+          },
+          "normal_signal": {
+            "title": "Normal Signal",
+            "type": "string"
+          },
+          "removed_evidence": {
+            "title": "Removed Evidence",
+            "type": "string"
+          },
+          "robustness": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Robustness",
+            "type": "string"
+          },
+          "stressed_confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Stressed Confidence",
+            "type": "integer"
+          },
+          "stressed_signal": {
+            "title": "Stressed Signal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "normal_signal",
+          "normal_confidence",
+          "stressed_signal",
+          "stressed_confidence",
+          "robustness",
+          "removed_evidence"
+        ],
+        "title": "StressTest",
+        "type": "object"
+      },
+      "Synthesis": {
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "evidence_used": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Used",
+            "type": "array"
+          },
+          "missing_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Evidence",
+            "type": "array"
+          },
+          "personalized_guidance": {
+            "title": "Personalized Guidance",
+            "type": "string"
+          },
+          "risk_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risk Flags",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "classification",
+          "confidence",
+          "summary",
+          "personalized_guidance",
+          "conflicts",
+          "risk_flags",
+          "evidence_used",
+          "missing_evidence"
+        ],
+        "title": "Synthesis",
+        "type": "object"
+      },
+      "UserDecision": {
+        "properties": {
+          "action": {
+            "enum": [
+              "BUY",
+              "SELL",
+              "WATCH",
+              "IGNORE",
+              "INVESTIGATE"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_signal": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ticker": {
+            "minLength": 1,
+            "title": "Ticker",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "ticker",
+          "action",
+          "analysis_id",
+          "current_signal",
+          "confidence",
+          "id",
+          "created_at"
+        ],
+        "title": "UserDecision",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "FinSync Intelligence API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Root  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Root"
+      }
+    },
+    "/api/v1/agent-performance": {
+      "get": {
+        "operationId": "agent_performance_api_v1_agent_performance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Performance Api V1 Agent Performance Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Performance",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/analyze": {
+      "post": {
+        "operationId": "analyze_api_v1_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/v1/behavior/{user_id}": {
+      "get": {
+        "operationId": "behavior_api_v1_behavior__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Behavior Api V1 Behavior  User Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Behavior",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/decisions": {
+      "post": {
+        "operationId": "record_decision_api_v1_decisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDecision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Decision",
+        "tags": [
+          "decisions"
+        ]
+      }
+    },
+    "/api/v1/decisions/{user_id}": {
+      "get": {
+        "operationId": "decision_history_api_v1_decisions__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserDecision"
+                  },
+                  "title": "Response Decision History Api V1 Decisions  User Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decision History",
+        "tags": [
+          "decisions"
+        ]
+      }
+    },
+    "/api/v1/documents": {
+      "post": {
+        "operationId": "ingest_api_v1_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Ingest Api V1 Documents Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "events_api_v1_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Events Api V1 Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Events",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/instruments/refresh": {
+      "post": {
+        "operationId": "refresh_api_v1_instruments_refresh_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogueStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/v1/instruments/search": {
+      "get": {
+        "operationId": "search_api_v1_instruments_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(NSE|BSE)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exchange"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(stock|etf_fund|unknown)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InstrumentSearchResult"
+                  },
+                  "title": "Response Search Api V1 Instruments Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/v1/instruments/status": {
+      "get": {
+        "operationId": "status_api_v1_instruments_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogueStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/v1/investigations": {
+      "get": {
+        "operationId": "investigations_api_v1_investigations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Investigations Api V1 Investigations Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Investigations",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/investigations/{analysis_id}": {
+      "get": {
+        "operationId": "investigation_detail_api_v1_investigations__analysis_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Investigation Detail",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/investigations/{analysis_id}/committee": {
+      "get": {
+        "operationId": "committee_detail_api_v1_investigations__analysis_id__committee_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Committee Detail Api V1 Investigations  Analysis Id  Committee Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Committee Detail",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/investigations/{analysis_id}/confidence-stress": {
+      "post": {
+        "operationId": "confidence_stress_api_v1_investigations__analysis_id__confidence_stress_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "freshness_penalty",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Freshness Penalty",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_source_penalty",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Missing Source Penalty",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confidence Stress Api V1 Investigations  Analysis Id  Confidence Stress Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confidence Stress",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/investigations/{analysis_id}/source-removal": {
+      "post": {
+        "operationId": "source_removal_api_v1_investigations__analysis_id__source_removal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Source Removal Api V1 Investigations  Analysis Id  Source Removal Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Source Removal",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/journals": {
+      "post": {
+        "operationId": "create_journal_api_v1_journals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JournalInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Journal Api V1 Journals Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Journal",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/journals/{user_id}": {
+      "get": {
+        "operationId": "journals_api_v1_journals__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Journals Api V1 Journals  User Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Journals",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/logs/{user_id}": {
+      "get": {
+        "operationId": "logs_api_v1_logs__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnalysisResponse"
+                  },
+                  "title": "Response Logs Api V1 Logs  User Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logs",
+        "tags": [
+          "logs"
+        ]
+      }
+    },
+    "/api/v1/market/candles/{instrument_key}": {
+      "get": {
+        "operationId": "candles_api_v1_market_candles__instrument_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_key",
+            "required": true,
+            "schema": {
+              "title": "Instrument Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Candle"
+                  },
+                  "title": "Response Candles Api V1 Market Candles  Instrument Key  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Candles",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/api/v1/market/quote/{instrument_key}": {
+      "get": {
+        "operationId": "quote_api_v1_market_quote__instrument_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_key",
+            "required": true,
+            "schema": {
+              "title": "Instrument Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketQuote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quote",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/api/v1/market/quotes": {
+      "get": {
+        "operationId": "quotes_api_v1_market_quotes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "instrument_keys",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Instrument Keys",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarketQuote"
+                  },
+                  "title": "Response Quotes Api V1 Market Quotes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quotes",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/api/v1/market/status": {
+      "get": {
+        "operationId": "status_api_v1_market_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status Api V1 Market Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/api/v1/portfolio/shock": {
+      "post": {
+        "operationId": "portfolio_shock_api_v1_portfolio_shock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShockInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Portfolio Shock Api V1 Portfolio Shock Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Portfolio Shock",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/portfolio/simulate": {
+      "post": {
+        "operationId": "portfolio_simulate_api_v1_portfolio_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioSimulationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Portfolio Simulate Api V1 Portfolio Simulate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Portfolio Simulate",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/predictions": {
+      "get": {
+        "operationId": "predictions_api_v1_predictions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Predictions Api V1 Predictions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Predictions",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/profiles": {
+      "post": {
+        "operationId": "upsert_profile_api_v1_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upsert Profile",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/{user_id}": {
+      "get": {
+        "operationId": "get_profile_api_v1_profiles__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Profile",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/stocks": {
+      "get": {
+        "operationId": "list_stocks_api_v1_stocks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarketSnapshot"
+                  },
+                  "title": "Response List Stocks Api V1 Stocks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Stocks",
+        "tags": [
+          "stocks"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "operationId": "system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response System Status Api V1 System Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "System Status",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/api/v1/time-travel/{symbol}": {
+      "get": {
+        "operationId": "time_travel_api_v1_time_travel__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "As Of",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Time Travel Api V1 Time Travel  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Time Travel",
+        "tags": [
+          "intelligence"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

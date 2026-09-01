@@ -63,6 +63,15 @@ def test_master_filter_upsert_search_ranking_and_exchange(client: TestClient) ->
     assert search_instruments("") == []
 
 
+def test_category_recovers_isin_from_instrument_key_when_provider_omits_field(client: TestClient) -> None:
+    row = {"segment": "NSE_EQ", "name": "HDFC BANK LTD", "exchange": "NSE",
+           "instrument_type": "EQ", "instrument_key": "NSE_EQ|INE040A01034", "trading_symbol": "HDFCBANK"}
+    parsed = parse_instruments([row])
+    assert parsed[0].isin == "INE040A01034" and parsed[0].category == "stock"
+    upsert_instruments(parsed)
+    assert search_instruments("HDFCBANK", category="stock")[0].symbol == "HDFCBANK"
+
+
 def test_catalogue_sync_mock_and_cached_failure(client: TestClient) -> None:
     first = sync_catalogue(force=True, client=mock_client(200, MASTER))
     assert first.status == "success" and first.instrument_count >= 2 and first.last_success_at

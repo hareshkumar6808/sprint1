@@ -34,6 +34,7 @@ def initialize_database() -> None:
           risk_profile TEXT NOT NULL, investment_horizon_years INTEGER NOT NULL,
           maximum_volatility REAL NOT NULL, portfolio_json TEXT NOT NULL,
           watchlist_json TEXT NOT NULL, interaction_history_json TEXT NOT NULL,
+          expanded_profile_json TEXT NOT NULL DEFAULT '{}',
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
@@ -54,7 +55,7 @@ def initialize_database() -> None:
         CREATE TABLE IF NOT EXISTS instruments (
           instrument_key TEXT PRIMARY KEY, exchange TEXT NOT NULL, segment TEXT NOT NULL,
           symbol TEXT NOT NULL, name TEXT NOT NULL, isin TEXT, tick_size REAL, lot_size INTEGER,
-          instrument_type TEXT NOT NULL, last_synced_at TEXT NOT NULL
+          instrument_type TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'unknown', last_synced_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_instruments_symbol ON instruments(symbol COLLATE NOCASE);
         CREATE INDEX IF NOT EXISTS idx_instruments_name ON instruments(name COLLATE NOCASE);
@@ -78,6 +79,28 @@ def initialize_database() -> None:
           user_id TEXT NOT NULL, instrument_key TEXT NOT NULL,
           PRIMARY KEY(user_id,instrument_key)
         );
+        CREATE TABLE IF NOT EXISTS events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, event_key TEXT UNIQUE NOT NULL, instrument_key TEXT,
+          symbol TEXT NOT NULL, event_type TEXT NOT NULL, severity TEXT NOT NULL,
+          evidence_json TEXT NOT NULL, occurred_at TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS journals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, symbol TEXT NOT NULL,
+          thesis TEXT NOT NULL, action TEXT NOT NULL, holding_period TEXT, catalyst TEXT,
+          reconsideration_condition TEXT, confidence INTEGER NOT NULL, notes TEXT,
+          outcome TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS predictions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, analysis_id TEXT UNIQUE NOT NULL, instrument_key TEXT,
+          symbol TEXT NOT NULL, prediction_timestamp TEXT NOT NULL, price REAL NOT NULL,
+          direction TEXT NOT NULL, raw_confidence INTEGER NOT NULL, calibrated_confidence INTEGER,
+          horizon_days INTEGER NOT NULL, evidence_snapshot_json TEXT NOT NULL, version TEXT NOT NULL,
+          forward_return REAL, direction_correct INTEGER, evaluated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS audit_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, investigation_id TEXT, event_type TEXT NOT NULL,
+          status TEXT NOT NULL, metadata_json TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         """)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(analysis_logs)")}
         if "response_json" not in columns:
@@ -86,6 +109,21 @@ def initialize_database() -> None:
             except sqlite3.OperationalError as exc:
                 if "duplicate column" not in str(exc).lower():
                     raise
+        instrument_columns = {row["name"] for row in conn.execute("PRAGMA table_info(instruments)")}
+        if "category" not in instrument_columns:
+            conn.execute("ALTER TABLE instruments ADD COLUMN category TEXT NOT NULL DEFAULT 'unknown'")
+        # Some Upstox master records omit the separate ISIN field while retaining it
+        # as the stable identity after `|` in instrument_key. Recover it so category
+        # filters do not hide valid stocks/ETFs already cached in older databases.
+        conn.execute("""UPDATE instruments SET isin=substr(instrument_key,instr(instrument_key,'|')+1)
+          WHERE (isin IS NULL OR isin='') AND instr(instrument_key,'|')>0 AND
+          (upper(substr(instrument_key,instr(instrument_key,'|')+1)) LIKE 'INE%' OR
+           upper(substr(instrument_key,instr(instrument_key,'|')+1)) LIKE 'INF%')""")
+        conn.execute("UPDATE instruments SET category='stock' WHERE upper(isin) LIKE 'INE%' AND category!='stock'")
+        conn.execute("UPDATE instruments SET category='etf_fund' WHERE upper(isin) LIKE 'INF%' AND category!='etf_fund'")
+        profile_columns = {row["name"] for row in conn.execute("PRAGMA table_info(user_profiles)")}
+        if "expanded_profile_json" not in profile_columns:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN expanded_profile_json TEXT NOT NULL DEFAULT '{}'")
 
 
 def encode_json(value: object) -> str:

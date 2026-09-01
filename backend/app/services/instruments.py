@@ -55,10 +55,14 @@ def parse_instruments(records: list[dict[str, Any]], synced_at: datetime | None 
         if row.get("segment") not in {"NSE_EQ", "BSE_EQ"} or row.get("instrument_type") != "EQ":
             continue
         try:
-            parsed.append(Instrument(instrument_key=str(row["instrument_key"]), exchange=row["exchange"],
+            instrument_key = str(row["instrument_key"])
+            key_identity = instrument_key.split("|", 1)[1] if "|" in instrument_key else ""
+            isin = row.get("isin") or (key_identity if key_identity.upper().startswith(("INE", "INF")) else None)
+            category = "stock" if str(isin or "").upper().startswith("INE") else ("etf_fund" if str(isin or "").upper().startswith("INF") else "unknown")
+            parsed.append(Instrument(instrument_key=instrument_key, exchange=row["exchange"],
                 segment=row["segment"], symbol=str(row["trading_symbol"]).upper(), name=str(row["name"]),
-                isin=row.get("isin"), tick_size=row.get("tick_size"), lot_size=row.get("lot_size"),
-                instrument_type=str(row["instrument_type"]), last_synced_at=timestamp))
+                isin=isin, tick_size=row.get("tick_size"), lot_size=row.get("lot_size"),
+                instrument_type=str(row["instrument_type"]), category=category, last_synced_at=timestamp))
         except (KeyError, TypeError, ValueError):
             continue
     return parsed
@@ -69,13 +73,13 @@ def upsert_instruments(items: list[Instrument]) -> int:
         return 0
     with connection() as conn:
         conn.executemany("""INSERT INTO instruments
-          (instrument_key,exchange,segment,symbol,name,isin,tick_size,lot_size,instrument_type,last_synced_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(instrument_key) DO UPDATE SET
+          (instrument_key,exchange,segment,symbol,name,isin,tick_size,lot_size,instrument_type,category,last_synced_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(instrument_key) DO UPDATE SET
           exchange=excluded.exchange,segment=excluded.segment,symbol=excluded.symbol,name=excluded.name,
           isin=excluded.isin,tick_size=excluded.tick_size,lot_size=excluded.lot_size,
-          instrument_type=excluded.instrument_type,last_synced_at=excluded.last_synced_at""",
+          instrument_type=excluded.instrument_type,category=excluded.category,last_synced_at=excluded.last_synced_at""",
           [(item.instrument_key, item.exchange, item.segment, item.symbol, item.name, item.isin,
-            item.tick_size, item.lot_size, item.instrument_type, item.last_synced_at.isoformat()) for item in items])
+            item.tick_size, item.lot_size, item.instrument_type, item.category, item.last_synced_at.isoformat()) for item in items])
     return len(items)
 
 
@@ -129,7 +133,8 @@ def sync_catalogue(force: bool = False, client: httpx.Client | None = None) -> C
     return result.model_copy(update={"status": "cached"}) if status == "failed" and result.instrument_count else result
 
 
-def search_instruments(query: str, exchange: str | None = None, limit: int = 20) -> list[InstrumentSearchResult]:
+def search_instruments(query: str, exchange: str | None = None, limit: int = 20,
+                       category: str | None = None) -> list[InstrumentSearchResult]:
     term = query.strip().upper()
     if not term:
         return []
@@ -137,6 +142,8 @@ def search_instruments(query: str, exchange: str | None = None, limit: int = 20)
     exchange_sql = ""
     if exchange:
         exchange_sql = " AND exchange=?"; params.append(exchange.upper())
+    if category in {"stock", "etf_fund", "unknown"}:
+        exchange_sql += " AND category=?"; params.append(category)
     params.append(max(1, min(limit, 50)))
     with connection() as conn:
         rows = conn.execute(f"""SELECT * FROM instruments WHERE
@@ -144,7 +151,8 @@ def search_instruments(query: str, exchange: str | None = None, limit: int = 20)
           {exchange_sql} ORDER BY CASE WHEN UPPER(symbol)=? THEN 0 WHEN UPPER(symbol) LIKE ? THEN 1 ELSE 2 END,
           LENGTH(symbol), name LIMIT ?""", [*params[:-1], term, f"{term}%", params[-1]]).fetchall()
     return [InstrumentSearchResult(instrument_key=row["instrument_key"], exchange=row["exchange"],
-        symbol=row["symbol"], name=row["name"], isin=row["isin"], instrument_type=row["instrument_type"]) for row in rows]
+        symbol=row["symbol"], name=row["name"], isin=row["isin"], instrument_type=row["instrument_type"],
+        category=row["category"]) for row in rows]
 
 
 def get_instrument(instrument_key: str) -> Instrument | None:

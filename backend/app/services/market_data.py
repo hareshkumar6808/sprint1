@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.schemas import MarketSnapshot
 from app.schemas import Candle, Instrument
 from app.services.upstox import UpstoxError, UpstoxProvider
+from app.services.yahoo import YahooError, YahooFinanceProvider
 
 DATA_FILE = Path(__file__).parent.parent / "data" / "market_data.json"
 REQUIRED_FIELDS = {name for name, field in MarketSnapshot.model_fields.items() if field.is_required()}
@@ -98,6 +99,8 @@ class ResilientMarketDataProvider:
         self.simulated = SimulatedMarketDataProvider()
         self.live = AlphaVantageMarketDataProvider(settings.market_data_api_key) if settings.market_data_mode == "live" and settings.market_data_api_key else None
         self.upstox = UpstoxProvider(settings.upstox_access_token) if settings.market_data_mode == "live" and settings.market_data_provider == "upstox" and settings.upstox_access_token else None
+        self.yahoo = YahooFinanceProvider() if settings.yahoo_finance_enabled and (
+            settings.market_data_mode == "free" or settings.market_data_provider == "yahoo" or settings.yahoo_allow_fallback) else None
 
     def get_snapshot(self, symbol: str) -> MarketSnapshot:
         if self.live:
@@ -113,23 +116,38 @@ class ResilientMarketDataProvider:
         return [self.get_snapshot(item.symbol) for item in self.simulated.list_snapshots()]
 
     def get_instrument_snapshot(self, instrument: Instrument) -> MarketSnapshot:
-        if not self.upstox:
+        if self.upstox:
+            try:
+                quotes = self.upstox.quotes([instrument]); candles = self.upstox.candles(instrument.instrument_key)
+                if not quotes: raise IncompleteMarketDataError("Upstox returned no quote for the selected instrument")
+                return snapshot_from_market_data(instrument, quotes[0], candles)
+            except (UpstoxError, IncompleteMarketDataError) as exc:
+                if self.yahoo and self.settings.yahoo_allow_fallback:
+                    try:
+                        quote = self.yahoo.quote(instrument).model_copy(update={"fallback_reason": f"Upstox unavailable: {type(exc).__name__}"})
+                        return snapshot_from_market_data(instrument, quote, self.yahoo.candles(instrument))
+                    except YahooError:
+                        pass
+                return self._fixture_or_unavailable(instrument, str(exc))
+        if self.yahoo and (self.settings.market_data_mode == "free" or self.settings.market_data_provider == "yahoo"):
+            try:
+                return snapshot_from_market_data(instrument, self.yahoo.quote(instrument), self.yahoo.candles(instrument))
+            except YahooError as exc:
+                return self._fixture_or_unavailable(instrument, str(exc))
+        reason = "Upstox live mode is not configured" if self.settings.market_data_mode != "free" else "Yahoo Finance is not enabled"
+        return self._fixture_or_unavailable(instrument, reason)
+
+    @property
+    def settings(self):
+        return get_settings()
+
+    def _fixture_or_unavailable(self, instrument: Instrument, reason: str) -> MarketSnapshot:
             try:
                 return self.get_snapshot(instrument.symbol).model_copy(update={"instrument_key": instrument.instrument_key,
-                    "exchange": instrument.exchange, "fallback_reason": "Upstox live mode is not configured"})
+                    "exchange": instrument.exchange, "fallback_reason": reason})
             except SymbolNotFoundError as exc:
-                raise IncompleteMarketDataError("Live Upstox data unavailable and no matching offline fixture exists") from exc
-        try:
-            quotes = self.upstox.quotes([instrument]); candles = self.upstox.candles(instrument.instrument_key)
-            if not quotes:
-                raise IncompleteMarketDataError("Upstox returned no quote for the selected instrument")
-            return snapshot_from_market_data(instrument, quotes[0], candles)
-        except UpstoxError as exc:
-            try:
-                return self.get_snapshot(instrument.symbol).model_copy(update={"instrument_key": instrument.instrument_key,
-                    "exchange": instrument.exchange, "fallback_reason": str(exc)})
-            except SymbolNotFoundError as missing:
-                raise IncompleteMarketDataError(str(exc)) from missing
+                raise IncompleteMarketDataError(
+                    f"Selected instrument exists, but its quote is unavailable ({reason}). No fallback price was fabricated; retry or choose another listing/provider.") from exc
 
 
 def calculate_features(snapshot: MarketSnapshot) -> MarketFeatures:
@@ -183,8 +201,11 @@ def snapshot_from_market_data(instrument: Instrument, quote: object, candles: li
         average_volume=average_volume, volatility=round(variance ** .5 * (252 ** .5), 2),
         drawdown=round((closes[-1] / peak - 1) * 100, 2), pe_ratio=None, revenue_growth=None,
         debt_to_equity_ratio=None, data_timestamp=normalized_quote.provider_timestamp or normalized_quote.retrieved_at,
-        simulated_data=False, provider_name="upstox", freshness=normalized_quote.freshness,
+        simulated_data=False, provider_name=normalized_quote.provider_name, freshness=normalized_quote.freshness,
         instrument_key=instrument.instrument_key, exchange=instrument.exchange, data_mode=normalized_quote.data_mode,
         retrieved_at=normalized_quote.retrieved_at, age_seconds=normalized_quote.age_seconds,
         market_status=normalized_quote.market_status, one_day_return=_return(closes, 1), rsi=_rsi(closes),
-        indicator_warnings=warnings)
+        indicator_warnings=warnings, provider_symbol=normalized_quote.provider_symbol,
+        source_class=normalized_quote.source_class, data_status=normalized_quote.data_status,
+        cache_status=normalized_quote.cache_status, fallback_reason=normalized_quote.fallback_reason,
+        disclaimer=normalized_quote.disclaimer)
