@@ -8,6 +8,7 @@ from app.routes.profiles import get_profile
 from app.schemas import (AnalysisMetrics, AnalysisResponse, AnalyzeRequest, AgentStatus,
                          Classification, Source)
 from app.services.market_data import SimulatedMarketDataProvider, SymbolNotFoundError
+from app.services.decision_lab import build_decision_lab
 from app.services.metrics import (data_completeness, historical_accuracy,
                                   historical_accuracy_counts, portfolio_concentration)
 from app.services.orchestrator import run_agents
@@ -57,11 +58,13 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
         reasoning.append("Reduced confidence because agent classifications conflict or vary.")
     if synthesis.missing_evidence:
         reasoning.append("Reduced confidence because one or more evidence inputs are missing.")
+    analysis_id = str(uuid4())
+    decision_lab = build_decision_lab(analysis_id, snapshot, profile, agents, synthesis)
     response = AnalysisResponse(
-        analysis_id=str(uuid4()), symbol=snapshot.symbol, profile=profile, market_snapshot=snapshot,
+        analysis_id=analysis_id, symbol=snapshot.symbol, profile=profile, market_snapshot=snapshot,
         market_signal=market_signal, agents=agents, synthesis=synthesis,
         sources=_deduplicate_sources(agents), reasoning_trace=reasoning, metrics=metrics,
-        warnings=list(dict.fromkeys(warnings)), disclaimer=DISCLAIMER,
+        warnings=list(dict.fromkeys(warnings)), disclaimer=DISCLAIMER, decision_lab=decision_lab,
     )
     serialized = response.model_dump(mode="json")
     with connection() as conn:
