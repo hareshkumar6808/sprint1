@@ -17,3 +17,13 @@ def test_stocks_are_simulated() -> None:
     assert len(response.json()) == 3
     assert all(stock["simulated_data"] for stock in response.json())
 
+
+def test_cors_supports_both_local_frontend_hosts() -> None:
+    with TestClient(app) as client:
+        for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+            response = client.options("/api/v1/stocks", headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+            })
+            assert response.status_code == 200
+            assert response.headers["access-control-allow-origin"] == origin

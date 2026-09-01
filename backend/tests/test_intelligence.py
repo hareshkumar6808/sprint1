@@ -9,10 +9,12 @@ from fastapi.testclient import TestClient
 from app.agents import behavioral, fundamental, sentiment, technical
 from app.config import get_settings
 from app.main import app
-from app.schemas import AgentOutput, AgentStatus, Classification, MarketSnapshot, Profile
+from app.schemas import (AgentOutput, AgentStatus, AnalysisResponse, Classification,
+                         MarketSnapshot, Profile)
 from app.services import orchestrator
 from app.services.market_data import SimulatedMarketDataProvider, SymbolNotFoundError, calculate_features
-from app.services.metrics import data_completeness, historical_accuracy, portfolio_concentration
+from app.services.metrics import (data_completeness, historical_accuracy,
+                                  historical_accuracy_counts, portfolio_concentration)
 from app.services.retrieval import FilingRetriever
 from app.services.synthesizer import synthesize
 
@@ -162,8 +164,25 @@ def test_no_uncited_recommendation_and_confidence_reduction() -> None:
 
 def test_metrics_calculations() -> None:
     assert historical_accuracy("TCS") == 50
+    assert historical_accuracy_counts("RELIANCE") == (2, 2)
+    assert historical_accuracy_counts("TCS") == (1, 2)
+    assert historical_accuracy_counts("INFY") == (1, 1)
     assert portfolio_concentration(profile()) == 64
     completed = AgentOutput(agent="technical", status=AgentStatus.completed, classification=Classification.neutral,
                             confidence=50, summary="x", latency_ms=1)
     unavailable = completed.model_copy(update={"agent": "sentiment", "status": AgentStatus.unavailable})
     assert data_completeness([completed, unavailable]) == 50
+
+
+def test_historical_metric_sample_is_exposed_and_old_logs_remain_compatible(client: TestClient) -> None:
+    create_profile(client, "metric-user", "moderate", 25)
+    response = client.post("/api/v1/analyze", json={"user_id": "metric-user", "symbol": "RELIANCE"})
+    assert response.status_code == 200
+    assert response.json()["metrics"]["historical_signal_correct"] == 2
+    assert response.json()["metrics"]["historical_signal_evaluated"] == 2
+
+    old_shape = response.json()
+    old_shape["metrics"].pop("historical_signal_correct")
+    old_shape["metrics"].pop("historical_signal_evaluated")
+    restored = AnalysisResponse.model_validate(old_shape)
+    assert restored.metrics.historical_signal_evaluated == 0

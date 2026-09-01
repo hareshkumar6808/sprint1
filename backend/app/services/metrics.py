@@ -9,8 +9,13 @@ HISTORY_FILE = Path(__file__).parent.parent / "data" / "historical_signals.json"
 
 
 def historical_accuracy(symbol: str, history_file: Path = HISTORY_FILE) -> float:
+    correct, evaluated = historical_accuracy_counts(symbol, history_file)
+    return round(correct / evaluated * 100, 2) if evaluated else 0.0
+
+
+def historical_accuracy_counts(symbol: str, history_file: Path = HISTORY_FILE) -> tuple[int, int]:
     rows = [row for row in json.loads(history_file.read_text()) if row.get("symbol") == symbol and "correct" in row]
-    return round(sum(bool(row["correct"]) for row in rows) / len(rows) * 100, 2) if rows else 0.0
+    return sum(bool(row["correct"]) for row in rows), len(rows)
 
 
 def _holding_weight(holding: dict[str, Any]) -> float:

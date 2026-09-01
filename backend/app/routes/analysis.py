@@ -8,7 +8,8 @@ from app.routes.profiles import get_profile
 from app.schemas import (AnalysisMetrics, AnalysisResponse, AnalyzeRequest, AgentStatus,
                          Classification, Source)
 from app.services.market_data import SimulatedMarketDataProvider, SymbolNotFoundError
-from app.services.metrics import data_completeness, historical_accuracy, portfolio_concentration
+from app.services.metrics import (data_completeness, historical_accuracy,
+                                  historical_accuracy_counts, portfolio_concentration)
 from app.services.orchestrator import run_agents
 from app.services.synthesizer import synthesize
 
@@ -37,12 +38,15 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
     agents, orchestration_latency = await run_agents(snapshot, profile)
     market_signal, synthesis, warnings = synthesize(agents)
     total_latency = round((perf_counter() - started) * 1000, 3)
+    historical_correct, historical_evaluated = historical_accuracy_counts(snapshot.symbol)
     metrics = AnalysisMetrics(
         latency_ms=total_latency,
         historical_signal_accuracy_percent=historical_accuracy(snapshot.symbol),
         portfolio_concentration_score=portfolio_concentration(profile),
         data_completeness_percent=data_completeness(agents),
         agents_completed=sum(agent.status == AgentStatus.completed for agent in agents), agents_expected=4,
+        historical_signal_correct=historical_correct,
+        historical_signal_evaluated=historical_evaluated,
     )
     reasoning = [
         f"Loaded the stored {profile.risk_profile} profile and validated {snapshot.symbol} simulated market data.",

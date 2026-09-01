@@ -1,101 +1,220 @@
 # FinSync Intelligence
 
-FinSync Intelligence is the local-first foundation for a multi-agent financial research application for retail investors. This setup phase provides shared contracts, simulated evidence, profiles, persistence, and a compiling dashboard shell—without pretending to deliver complete investment intelligence.
+FinSync Intelligence is a local-first, multi-agent financial research application for retail investors. It turns visibly simulated market data, synthetic news, local filing passages, and a stored investor profile into a traceable educational research report. It does not provide live trading, direct buy/sell instructions, or guaranteed outcomes.
+
+## Problem and solution
+
+Retail investors often see isolated price signals without the evidence, conflicts, suitability context, or data-quality limitations behind them. FinSync runs four independent deterministic agents concurrently, retrieves relevant filing passages with TF-IDF, preserves every agent result, and synthesizes only cited evidence. The dashboard exposes classifications, confidence, reasoning, sources, missing inputs, portfolio state, and measured pipeline quality.
 
 ## Architecture and data flow
 
 ```mermaid
 flowchart LR
-  M[Market Data] --> T[Technical Agent]
-  N[News Data] --> S[Sentiment Agent]
-  F[Filing Corpus] --> R[Retrieval Layer] --> U[Fundamental Agent]
+  M[Simulated Market Data] --> T[Technical Agent]
+  N[Synthetic News] --> S[Sentiment Agent]
+  F[Local Filing Corpus] --> R[TF-IDF Retrieval] --> U[Fundamental Agent]
   P[User Profile + Portfolio] --> B[Behavioral Agent]
-  T --> O[Parallel Orchestrator]
+  T --> O[Async Parallel Orchestrator]
   S --> O
   U --> O
   B --> O
-  O --> Y[Synthesis Layer]
-  Y --> D[Dashboard]
-  Y --> L[SQLite Log]
+  O --> Y[Deterministic Synthesis]
+  Y --> D[Next.js Dashboard]
+  Y --> L[SQLite Analysis Log]
 ```
 
-The technical agent will evaluate deterministic momentum, volume, volatility, and drawdown features. The sentiment agent will assess visibly simulated news. The fundamental agent will retrieve filing passages before classifying evidence. The behavioral agent will compare a signal with the user's risk profile, horizon, portfolio concentration, watchlist, and interaction history. The orchestrator will run these agents concurrently with `asyncio`, tolerate partial failures, and pass completed evidence to synthesis.
+1. The frontend saves a risk profile, portfolio, watchlist, and interaction context.
+2. The API validates the stored user and selected symbol.
+3. Local market, news, and filing fixtures are loaded without filling missing values.
+4. Four agents run through `asyncio.gather()` with per-agent failure isolation.
+5. Filing queries retrieve traceable TF-IDF chunks for revenue, profitability, debt, guidance, and risk.
+6. Deterministic synthesis detects agreement, conflict, and missing evidence, then adjusts confidence.
+7. The complete typed response is logged in SQLite and rendered by the dashboard.
 
-Data flows from local provider fixtures and user profiles into specialized agents, then through a parallel orchestrator and evidence-aware synthesis. Results ultimately feed the Next.js dashboard and an SQLite analysis log. An optional live provider can later implement the market-data protocol without changing downstream contracts.
+## Agent roles and decision logic
 
-## Tech stack
+| Agent | Role | Output labels |
+|---|---|---|
+| Technical | Scores 5-day/20-day momentum, moving-average position, volume ratio, volatility, and drawdown. | `bullish`, `neutral`, `bearish` |
+| Sentiment | Aggregates only local synthetic news records and preserves record-level attribution. | `positive`, `neutral`, `negative`, or `insufficient_data` |
+| Fundamental/RAG | Classifies only text returned by the filing retriever; every claim maps to a document and chunk ID. | `strong`, `mixed`, `weak`, or `insufficient_data` |
+| Behavioral | Compares volatility, horizon, risk profile, interaction history, and portfolio concentration. | `suitable`, `neutral`, `unsuitable` |
 
-- Next.js, TypeScript, Tailwind CSS
-- FastAPI, Pydantic, built-in `sqlite3`
-- Planned `asyncio` orchestration and scikit-learn TF-IDF retrieval
-- pytest and httpx for backend tests
+The synthesis layer maps agent classifications to deterministic directional scores. Missing agents reduce confidence by fixed penalties; conflicting directions also reduce confidence. If no cited evidence exists, synthesis returns `insufficient_data` and produces no uncited conclusion. Guidance uses educational language such as “consider,” “monitor,” and “investigate further.”
+
+Historical accuracy is calculated only from `historical_signals.json` as correct fixture outcomes divided by evaluated fixture outcomes. The response includes both counts, and the dashboard explicitly distinguishes this small synthetic evaluation from live predictive performance.
+
+## Retrieval and citations
+
+`FilingRetriever` splits each local synthetic filing into paragraph chunks and builds a scikit-learn TF-IDF index. The Fundamental Agent queries five evidence categories and uses only returned passages. Each result retains `document`, `chunk_id`, text, and similarity score. These local documents are synthetic demonstration material, not regulatory filings or external citations.
+
+## Persistence
+
+SQLite stores user profiles and complete serialized `AnalysisResponse` logs. Existing databases are migrated additively for the full response JSON. The history endpoint validates and deserializes each saved response through Pydantic. New optional metric-count fields have defaults so older persisted analyses remain readable.
+
+## Technology
+
+- Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS
+- Backend: FastAPI, Pydantic, built-in `sqlite3`
+- Orchestration: Python `asyncio`
+- Retrieval: scikit-learn TF-IDF and cosine similarity
+- Tests: pytest, FastAPI TestClient/httpx
 
 ## Folder structure
 
 ```text
-backend/app/       API, schemas, database, routes, agents, services, fixtures
-backend/tests/     Backend health and fixture endpoint tests
-frontend/app/      Next.js App Router shell and theme
-frontend/components/ Typed dashboard placeholders
-frontend/lib/      Environment-based API client
-frontend/types/    Shared analysis contracts in TypeScript
+backend/
+  app/agents/       Four specialist agents and shared contract exports
+  app/services/     Market provider, retrieval, orchestration, synthesis, metrics
+  app/routes/       Health, stocks, profiles, analysis, and logs endpoints
+  app/data/         Simulated market/news/history fixtures and synthetic filings
+  tests/            Agent, API, scenario, metrics, retrieval, and persistence tests
+frontend/
+  app/              Next.js route, metadata, icon, and responsive theme
+  components/       Complete interactive dashboard
+  lib/              Typed API client
+  types/            Backend-aligned TypeScript response types
 ```
 
-## Local setup
+## Installation
+
+From the repository root:
 
 ```bash
-cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
-cp ../.env.example .env
+python -m pip install -r backend/requirements.txt
+cd frontend
+npm install
+cd ..
+cp .env.example .env
+```
+
+No API keys or external accounts are required.
+
+## Run locally
+
+Backend terminal:
+
+```bash
+cd /Users/pavans/Desktop/sprint1
+source .venv/bin/activate
+cd backend
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-In a second terminal:
+Frontend terminal:
 
 ```bash
-cd frontend
-npm install
-cp ../.env.example .env.local
-npm run dev
+cd /Users/pavans/Desktop/sprint1/frontend
+npm run dev -- --hostname 127.0.0.1
 ```
 
-The frontend is at `http://localhost:3000`; the API docs are at `http://localhost:8000/docs`.
+Open `http://127.0.0.1:3000`. API documentation is at `http://127.0.0.1:8000/docs`.
 
-## Verification commands
+## Tests and build
 
 ```bash
-cd backend && source .venv/bin/activate && pytest
-cd frontend && npm run lint && npm run typecheck && npm run build
+cd /Users/pavans/Desktop/sprint1/backend
+../.venv/bin/pytest
+../.venv/bin/python -m compileall -q app tests
+
+cd /Users/pavans/Desktop/sprint1/frontend
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-## Shared response contract
+## API endpoints
 
-Every agent returns an agent name, status, classification, confidence from 0–100, summary, evidence, risks, sources, latency, and warnings. The complete analysis adds identifiers and timestamps, profile and market state, synthesis, deduplicated sources, a reasoning trace, completeness/accuracy/concentration/latency metrics, warnings, and a disclaimer. Enums and field shapes are defined in `backend/app/schemas.py` and mirrored in `frontend/types/analysis.ts`.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | API identity |
+| GET | `/health` | Service health and version |
+| GET | `/api/v1/stocks` | Validated simulated market snapshots |
+| POST | `/api/v1/profiles` | Create or update a user profile |
+| GET | `/api/v1/profiles/{user_id}` | Load a stored profile |
+| POST | `/api/v1/analyze` | Run and persist the four-agent pipeline |
+| GET | `/api/v1/logs/{user_id}` | Load complete saved analyses |
 
-## Three-hour developer division
+Example profile:
 
-- Developer 1: agent implementations, TF-IDF retrieval, parallel orchestration, synthesis, deterministic metrics, and analysis logging.
-- Developer 2: profile workflow, portfolio/watchlist state, stock selection, agent/synthesis cards, warnings, sources, metrics, and basic Recharts visualization if time permits.
-- Both: verify shared schema changes on both sides and keep the demo runnable.
+```json
+{
+  "user_id": "demo-user",
+  "risk_profile": "conservative",
+  "investment_horizon_years": 8,
+  "maximum_volatility": 15,
+  "portfolio": [
+    {"symbol": "TCS", "weight": 70},
+    {"symbol": "RELIANCE", "weight": 30}
+  ],
+  "watchlist": ["TCS"],
+  "interaction_history": [{"action": "viewed", "symbol": "TCS"}]
+}
+```
 
-## Requirement checklist
+Example analysis request:
 
-- [x] Local Next.js/FastAPI monorepo foundation with no paid services or Docker
-- [x] Root, health, stocks, profile create/read, and safe placeholder routes
-- [x] CORS, environment configuration, SQLite initialization, typed contracts
-- [x] Simulated RELIANCE, conflicting TCS, and incomplete INFY fixtures
-- [x] Synthetic filings and historical signal outcomes
-- [x] Market-provider boundary and placeholders for four agents/services
-- [x] Frontend health indicator, API client, shared types, and UI placeholders
-- [ ] Implement agent intelligence and parallel failure-tolerant orchestration
-- [ ] Implement filing retrieval, synthesis, metrics, and analysis logging
-- [ ] Build functional profile, portfolio, watchlist, analysis, and visualization UX
-- [ ] Measure historical accuracy and portfolio concentration in the live flow
+```json
+{"user_id": "demo-user", "symbol": "TCS"}
+```
 
-## Disclaimers
+## Demonstration scenarios
 
-All bundled market records, news, filing summaries, and historical outcomes are synthetic and visibly marked as simulated. They are not real articles, company filings, live quotes, or external citations.
+- **RELIANCE — complete:** generally positive evidence, 4/4 completed agents, 100% data completeness, and traceable market/news/filing/profile sources.
+- **TCS — conflict:** favorable technical momentum conflicts with weaker retrieved fundamentals and profile suitability. Confidence is reduced. Switching between conservative and aggressive profiles changes Behavioral Agent output and personalized guidance for the same market snapshot.
+- **INFY — degraded:** no synthetic news records exist. Sentiment returns `unavailable` and `insufficient_data`; the other three agents complete, completeness is 75%, confidence is reduced, and missing evidence remains visible.
 
-FinSync Intelligence presents educational research intelligence, not personalized financial advice. It does not issue guaranteed outcomes or direct buy/sell instructions. Missing or unverified evidence must reduce confidence and may require an `insufficient_data` result.
+## Two-minute demo
+
+1. Start both services and open the dashboard.
+2. Confirm the green API status and persistent simulated-data label.
+3. Save the default conservative profile and run RELIANCE to show the complete evidence path.
+4. Run TCS and point out the conflict banner, agent classifications, citations, and fixture sample size.
+5. Change the profile to Aggressive, save, and rerun TCS to show different suitability guidance.
+6. Run INFY to demonstrate graceful degradation and missing sentiment evidence.
+7. Reopen an item from Analysis History without rerunning the pipeline.
+
+## Requirement compliance audit
+
+| Requirement | Implementation | Demo evidence | Status |
+|---|---|---|---|
+| Price, volume, technical data | `market_data.json`, `market_data.py`, `/api/v1/stocks` | Three validated simulated snapshots | Complete |
+| Financial document corpus | `app/data/filings/*.txt` | One synthetic multi-section filing per company | Complete |
+| Semantic relevance retrieval | `services/retrieval.py` | TF-IDF/cosine-ranked chunks with IDs | Complete |
+| Multi-agent orchestration | `services/orchestrator.py` | Four results preserved through `asyncio.gather()` | Complete |
+| Behavioral profiling | `agents/behavioral.py`, `/api/v1/profiles` | Conservative/aggressive TCS results differ | Complete |
+| Visualization/interface | `frontend/components/Dashboard.tsx` | Responsive profile, signals, agents, evidence, metrics, history | Complete |
+| Logging and persistence | `database.py`, `/api/v1/logs/{user_id}` | Complete typed responses reopen from SQLite | Complete |
+| Three independent dimensions | Dashboard signal panel and agent outputs | Momentum, volume anomaly, sentiment shown separately | Complete |
+| Momentum signal | `agents/technical.py` | 5/20-day returns and moving-average position | Complete |
+| Volume-anomaly signal | `calculate_features`, Technical Agent | Volume ratio shown with label and explanation | Complete |
+| Sentiment signal | `agents/sentiment.py` | Positive/neutral/negative or explicit unavailable | Complete |
+| Labels and confidence | Shared `AgentOutput` contract | Every agent card shows both | Complete |
+| Cited reasoning | `Source`, evidence arrays, reasoning trace | Claims connect to local feeds/chunks | Complete |
+| RAG-grounded output | `retrieval.py`, `fundamental.py` | Fundamental claims contain retrieved chunk IDs | Complete |
+| Visible attribution | Analysis `sources`; Sources panel | Title, document, date, chunk, associated agent | Complete |
+| Three agents in parallel | Four agents in `run_agents` | Concurrency/failure-isolation test | Complete |
+| Structured contracts | `schemas.py`, `types/analysis.ts` | Pydantic and TypeScript shapes align | Complete |
+| Synthesis layer | `services/synthesizer.py` | Deterministic classification/conflict/confidence | Complete |
+| Profile personalization | Behavioral Agent and synthesis guidance | Identical TCS input differs by risk profile | Complete |
+| Portfolio/watchlist | Profile schema and dashboard editor | Editable holdings, allocation validation, watchlist | Complete |
+| Current market signals | Snapshot and signal panels | Price, returns, average, volume, volatility, drawdown | Complete |
+| Agent reasoning | Agent evidence plus `reasoning_trace` | Expandable ordered explanation | Complete |
+| Three logged metrics | `AnalysisMetrics` | Latency, fixture accuracy/counts, concentration, completeness, agents | Complete |
+| End-to-end scenario | `/api/v1/analyze`; RELIANCE | Profile → agents → synthesis → SQLite → dashboard | Complete |
+| Degraded scenario | INFY missing news | 3/4, 75%, sentiment unavailable | Complete |
+| Conflicting scenario | TCS fixture | Conflict banner and confidence penalty | Complete |
+| No uncited conclusion | `synthesize()` guard | No sources returns `insufficient_data` | Complete |
+| Architecture/logic summary | This README and Mermaid diagram | Written flow, roles, retrieval, synthesis, safety | Complete |
+
+## Limitations and disclaimers
+
+- All bundled market records, news, filing summaries, and historical outcomes are synthetic and visibly marked simulated.
+- Fixture-based historical accuracy uses a very small sample and is not evidence of live-market predictive performance.
+- The local TF-IDF corpus is deliberately small and is not a substitute for verified regulatory filings.
+- No live feed, brokerage integration, transaction execution, LLM, or external citation service is enabled.
+- A missing feed or agent reduces completeness and confidence; without cited evidence the system returns `insufficient_data`.
+
+FinSync Intelligence is educational research software, not personalized financial advice. It does not guarantee returns or issue direct buy/sell instructions.

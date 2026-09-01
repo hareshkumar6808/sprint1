@@ -13,6 +13,17 @@
 @media (max-width:520px) { .topbar { gap:.75rem; }.header-badges .simulated { display:none; }.hero h1 { font-size:3.3rem; }.research-control { padding:1rem; } }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
 
+/* Final responsive and accessibility safeguards. */
+html,body { min-width:0; overflow-x:hidden; }
+button,select,input { min-height:44px; }
+.field input[aria-invalid="true"] { border-color:var(--red); }
+.reasoning-panel li p,.history-list>button>*,.result-heading p,.source-item dd { min-width:0; overflow-wrap:anywhere; }
+@media (max-width:560px) {
+  .profile-column { padding:1rem; }
+  .hero-copy h1 { max-width:100%; font-size:clamp(2.55rem,13vw,3rem); overflow-wrap:anywhere; }
+  .history-list>button { gap:.65rem; }
+}
+
 /* Complete dashboard */
 :root { --panel-2:#10211b; --soft:#132820; --lime-soft:#c8f77c; --red:#ff8f7d; --blue:#85bfff; }
 .app-shell { min-height:100vh; overflow:hidden; background:radial-gradient(circle at 86% 4%,#17372a 0,transparent 28%),linear-gradient(180deg,#08130f 0,#07110f 48%,#091512 100%); }
