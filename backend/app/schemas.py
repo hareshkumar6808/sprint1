@@ -116,3 +116,7 @@ class AnalysisResponse(BaseModel):
     warnings: list[str]
     disclaimer: str
 
+
+class AnalyzeRequest(BaseModel):
+    user_id: str = Field(min_length=1)
+    symbol: str = Field(min_length=1)
