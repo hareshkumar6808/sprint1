@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, BarChart3, TrendingUp, Briefcase, Eye, Newspaper, Brain, Zap, Clock, Settings, User } from "lucide-react";
+import { Menu, X, BarChart3, TrendingUp, Briefcase, Eye, Newspaper, Brain, Zap, Clock } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: BarChart3 },
@@ -14,11 +14,6 @@ const NAV_ITEMS = [
   { id: "intelligence", label: "Intelligence", icon: Brain },
   { id: "decision-lab", label: "Decision Lab", icon: Zap },
   { id: "history", label: "History", icon: Clock },
-];
-
-const FOOTER_ITEMS = [
-  { id: "settings", label: "Settings", icon: Settings },
-  { id: "profile", label: "Profile", icon: User },
 ];
 
 interface AppSidebarProps {
@@ -35,8 +30,6 @@ const PAGE_ROUTES: Record<string, string> = {
   intelligence: "/intelligence",
   "decision-lab": "/decision-lab",
   history: "/history",
-  settings: "/settings",
-  profile: "/profile",
 };
 
 export function AppSidebar({ onNavigate }: AppSidebarProps) {
@@ -103,28 +96,6 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="sidebar-footer">
-          <nav className="sidebar-nav">
-            {FOOTER_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const route = PAGE_ROUTES[item.id];
-              return (
-                <li key={item.id}>
-                  <Link
-                    href={route}
-                    onClick={() => {
-                      onNavigate?.(item.id);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <Icon size={17} />
-                    <span>{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </nav>
-        </div>
       </aside>
     </>
   );

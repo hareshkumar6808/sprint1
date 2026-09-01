@@ -1,16 +1,14 @@
 "use client";
 
-import { Search, Settings, Moon, Sun } from "lucide-react";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 interface TopBarProps {
   onSearch?: (query: string) => void;
-  isDarkMode?: boolean;
-  onThemeToggle?: () => void;
 }
 
-export function TopBar({ onSearch, isDarkMode = false, onThemeToggle }: TopBarProps) {
+export function TopBar({ onSearch }: TopBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,12 +46,6 @@ export function TopBar({ onSearch, isDarkMode = false, onThemeToggle }: TopBarPr
       {/* Right Section */}
       <div className="header-badges">
         <span className="badge">Market Status: Open</span>
-        <button className="btn-icon" onClick={onThemeToggle} aria-label="Toggle theme">
-          {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-        <button className="btn-icon" aria-label="Settings">
-          <Settings size={16} />
-        </button>
       </div>
     </header>
   );
