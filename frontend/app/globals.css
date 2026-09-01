@@ -1,0 +1,12 @@
+@import "tailwindcss";
+:root { color-scheme: dark; --ink:#e8f0f2; --muted:#9eb0b6; --panel:#10252b; --accent:#48d6a4; }
+* { box-sizing: border-box; }
+body { margin:0; color:var(--ink); background:radial-gradient(circle at 20% 0%,#163b42,#071316 55%); font-family:Arial,Helvetica,sans-serif; }
+.shell { min-height:100vh; display:grid; place-items:center; padding:2rem; }
+.panel { width:min(720px,100%); border:1px solid #28505a; border-radius:20px; padding:2.5rem; background:color-mix(in srgb,var(--panel) 88%,transparent); box-shadow:0 24px 80px #0008; }
+.eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.15em; font-size:.75rem; font-weight:700; }
+h1 { font-size:clamp(2.2rem,7vw,4.4rem); line-height:.95; margin:1rem 0; }
+p { color:var(--muted); line-height:1.7; }
+.status { display:inline-flex; gap:.6rem; align-items:center; margin-top:1.25rem; padding:.65rem .9rem; border-radius:999px; background:#07191d; border:1px solid #28505a; }
+.dot { width:.65rem; height:.65rem; border-radius:50%; background:#e8a94b; }
+.dot.ok { background:var(--accent); box-shadow:0 0 12px var(--accent); }

@@ -1,0 +1,7 @@
+[
+  {"symbol":"RELIANCE","signal_date":"2026-06-01","classification":"bullish","evaluation_date":"2026-06-21","later_direction":"up","correct":true,"simulated_data":true},
+  {"symbol":"RELIANCE","signal_date":"2026-07-01","classification":"neutral","evaluation_date":"2026-07-21","later_direction":"flat","correct":true,"simulated_data":true},
+  {"symbol":"TCS","signal_date":"2026-06-10","classification":"bullish","evaluation_date":"2026-06-30","later_direction":"down","correct":false,"simulated_data":true},
+  {"symbol":"TCS","signal_date":"2026-07-10","classification":"bearish","evaluation_date":"2026-07-30","later_direction":"down","correct":true,"simulated_data":true},
+  {"symbol":"INFY","signal_date":"2026-07-05","classification":"neutral","evaluation_date":"2026-07-25","later_direction":"flat","correct":true,"simulated_data":true}
+]
