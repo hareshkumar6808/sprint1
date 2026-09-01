@@ -1,9 +1,22 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-export async function getHealth(): Promise<{ ok: boolean; version?: string }> {
-  try {
-    const response = await fetch(`${API_URL.replace(/\/api\/v1$/, "")}/health`, { cache: "no-store" });
-    if (!response.ok) return { ok: false };
-    const data: { status: string; version: string } = await response.json();
-    return { ok: data.status === "healthy", version: data.version };
-  } catch { return { ok: false }; }
+import type { AnalysisResponse, HealthResponse, MarketSnapshot, Profile, ProfileInput } from "@/types/analysis";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
+export class ApiError extends Error { constructor(message: string, public status?: number) { super(message); this.name = "ApiError"; } }
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  let response: Response;
+  try { response = await fetch(`${API_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", ...options.headers } }); }
+  catch { throw new ApiError("The FinSync backend is unavailable. Start the API and try again."); }
+  const text = await response.text(); let data: unknown = null;
+  if (text) { try { data = JSON.parse(text); } catch { throw new ApiError("The backend returned an unreadable response.", response.status); } }
+  if (!response.ok) { const detail = typeof data === "object" && data && "detail" in data ? String((data as { detail: unknown }).detail) : `Request failed (${response.status})`; throw new ApiError(detail, response.status); }
+  return data as T;
 }
+export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
+  const root = API_URL.replace(/\/api\/v1\/?$/, ""); let response: Response;
+  try { response = await fetch(`${root}/health`, { cache: "no-store", signal }); } catch { throw new ApiError("The FinSync backend is unavailable. Start the API and retry."); }
+  if (!response.ok) throw new ApiError(`Health check failed (${response.status})`, response.status);
+  try { return await response.json() as HealthResponse; } catch { throw new ApiError("The health response was not valid JSON."); }
+}
+export const listStocks = (signal?: AbortSignal) => request<MarketSnapshot[]>("/stocks", { signal });
+export const saveProfile = (profile: ProfileInput, signal?: AbortSignal) => request<Profile>("/profiles", { method: "POST", body: JSON.stringify(profile), signal });
+export const runAnalysis = (userId: string, symbol: string, signal?: AbortSignal) => request<AnalysisResponse>("/analyze", { method: "POST", body: JSON.stringify({ user_id: userId, symbol }), signal });
+export const loadAnalysisHistory = (userId: string, signal?: AbortSignal) => request<AnalysisResponse[]>(`/logs/${encodeURIComponent(userId)}`, { signal });
