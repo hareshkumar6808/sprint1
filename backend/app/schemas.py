@@ -99,6 +99,8 @@ class AnalysisMetrics(BaseModel):
     data_completeness_percent: float
     agents_completed: int
     agents_expected: int
+    historical_signal_correct: int = Field(default=0, ge=0)
+    historical_signal_evaluated: int = Field(default=0, ge=0)
 
 
 class AnalysisResponse(BaseModel):
@@ -116,3 +118,7 @@ class AnalysisResponse(BaseModel):
     warnings: list[str]
     disclaimer: str
 
+
+class AnalyzeRequest(BaseModel):
+    user_id: str = Field(min_length=1)
+    symbol: str = Field(min_length=1)

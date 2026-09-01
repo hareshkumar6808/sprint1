@@ -43,12 +43,18 @@ def initialize_database() -> None:
           recommendation TEXT NOT NULL, confidence REAL NOT NULL, latency_ms REAL NOT NULL,
           historical_accuracy REAL NOT NULL, concentration_score REAL NOT NULL,
           data_completeness REAL NOT NULL, agent_outputs_json TEXT NOT NULL,
-          sources_json TEXT NOT NULL, warnings_json TEXT NOT NULL,
+          sources_json TEXT NOT NULL, warnings_json TEXT NOT NULL, response_json TEXT,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """)
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(analysis_logs)")}
+        if "response_json" not in columns:
+            try:
+                conn.execute("ALTER TABLE analysis_logs ADD COLUMN response_json TEXT")
+            except sqlite3.OperationalError as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
 
 
 def encode_json(value: object) -> str:
     return json.dumps(value, separators=(",", ":"))
-
