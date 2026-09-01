@@ -125,9 +125,7 @@ export function Dashboard() {
   const movingAveragePosition = snapshot?.twenty_day_moving_average ? (snapshot.current_price / snapshot.twenty_day_moving_average - 1) * 100 : 0;
   const dailyReturn = snapshot ? (snapshot.current_price / snapshot.previous_close - 1) * 100 : 0;
 
-  return <main className="app-shell" id="top">
-    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">F</span><span><strong>FinSync</strong><small>Intelligence</small></span></a><div className="header-copy"><span>Multi-Agent Market Research</span><small>Evidence before conclusions</small></div><div className="header-badges"><span className="badge simulated">Provider: {quote?.provider_name ?? "checking"}</span><span className="badge simulated">Data: {quote?.data_mode ?? "checking"}</span><button className={`badge connection ${connected === true ? "online" : connected === false ? "offline" : "checking"}`} onClick={() => void refresh()}><span aria-hidden="true">●</span>{connected === true ? `API connected ${version ? `· v${version}` : ""}` : connected === false ? "Backend unavailable" : "Checking API"}</button></div></header>
-    <div className="disclaimer-strip"><span>i</span><p><strong>Educational research intelligence.</strong> Market mode and source provenance are disclosed separately—not financial advice, guaranteed outcomes, or direct trading instructions.</p></div>
+  return <div className="dashboard-content">
 
     <section className="command-grid">
       <aside className="profile-column">
@@ -173,6 +171,5 @@ export function Dashboard() {
 
     <section className="history-section"><div className="panel-heading"><div><p className="eyebrow">Persisted research</p><h3>Analysis history</h3></div><button className="text-button" onClick={() => void refresh()}>↻ Refresh history</button></div>{history.length ? <div className="history-list">{history.map((item) => <button key={item.analysis_id} onClick={() => reopen(item)}><span><strong>{item.symbol}</strong><small>{formatDate(item.generated_at)}</small></span><Tag value={item.synthesis.classification}/><span><strong>{item.synthesis.confidence}%</strong><small>Confidence</small></span><span><strong>{titleCase(item.profile.risk_profile)}</strong><small>Risk profile</small></span><span><strong>{item.metrics.data_completeness_percent.toFixed(0)}%</strong><small>Complete</small></span><b>Open →</b></button>)}</div> : <div className="empty-panel"><span>⌁</span><strong>No saved analyses yet</strong><p>Completed reports will appear here and can be reopened without rerunning the agents.</p></div>}</section>
     <section className="history-section"><div className="panel-heading"><div><p className="eyebrow">Persisted actions</p><h3>Recent decisions</h3></div></div>{decisions.length ? <div className="decision-history">{decisions.slice(0, 8).map((item) => <article key={item.id}><strong>{item.action}</strong><span>{item.ticker}</span><small>{item.current_signal} · {item.confidence}% · {formatDate(item.created_at)}</small></article>)}</div> : <div className="empty-panel"><strong>No decisions recorded</strong><p>Choose an action from a completed analysis.</p></div>}</section>
-    <footer className="site-footer"><div className="brand"><span className="brand-mark">F</span><span><strong>FinSync</strong><small>Intelligence</small></span></div><p>Built for transparent, educational market research with visibly simulated evidence.</p><a href="#top">Back to top ↑</a></footer>
-  </main>;
+  </div>;
 }
