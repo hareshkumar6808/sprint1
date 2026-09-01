@@ -32,6 +32,21 @@ def upsert_profile(payload: ProfileInput) -> Profile:
         """, (payload.user_id, payload.risk_profile, payload.investment_horizon_years, payload.maximum_volatility,
                encode_json(payload.portfolio), encode_json(payload.watchlist), encode_json(payload.interaction_history)))
         row = conn.execute("SELECT * FROM user_profiles WHERE user_id=?", (payload.user_id,)).fetchone()
+        conn.execute("DELETE FROM profile_holdings WHERE user_id=?", (payload.user_id,))
+        conn.execute("DELETE FROM profile_watchlist WHERE user_id=?", (payload.user_id,))
+        for holding in payload.portfolio:
+            key = str(holding.get("instrument_key") or holding.get("symbol") or "").strip()
+            symbol = str(holding.get("symbol") or "").upper()
+            if key and symbol:
+                conn.execute("""INSERT OR REPLACE INTO profile_holdings
+                  (user_id,instrument_key,symbol,exchange,allocation,quantity,value) VALUES (?,?,?,?,?,?,?)""",
+                  (payload.user_id, key, symbol, holding.get("exchange"),
+                   holding.get("weight", holding.get("allocation_percent")), holding.get("quantity"), holding.get("value")))
+        for item in payload.watchlist:
+            key = str(item.get("instrument_key") if isinstance(item, dict) else item).strip()
+            if key:
+                conn.execute("INSERT OR IGNORE INTO profile_watchlist(user_id,instrument_key) VALUES(?,?)",
+                             (payload.user_id, key))
     return row_to_profile(row)
 
 
@@ -42,4 +57,3 @@ def get_profile(user_id: str) -> Profile:
     if row is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return row_to_profile(row)
-

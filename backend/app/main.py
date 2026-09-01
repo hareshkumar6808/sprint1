@@ -5,12 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import initialize_database
-from app.routes import analysis, decisions, health, logs, profiles, stocks
+from app.routes import analysis, decisions, documents, health, instruments, logs, market, profiles, stocks
+from app.services.instruments import seed_fixture_if_empty
+from app.services.instruments import sync_catalogue
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize_database()
+    seed_fixture_if_empty()
+    if settings.market_data_mode == "live":
+        sync_catalogue()
     yield
 
 
@@ -24,7 +29,8 @@ local_frontend_origins = list(dict.fromkeys([
 app.add_middleware(CORSMiddleware, allow_origins=local_frontend_origins, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 app.include_router(health.router)
-for route in (stocks.router, profiles.router, analysis.router, logs.router, decisions.router):
+for route in (stocks.router, profiles.router, analysis.router, logs.router, decisions.router,
+              instruments.router, market.router, documents.router):
     app.include_router(route, prefix="/api/v1")
 
 

@@ -115,14 +115,18 @@ def _dna(agents: list[AgentOutput], verification: EvidenceVerification, profile:
 
 def _change_conditions(snapshot: MarketSnapshot) -> list[str]:
     features = calculate_features(snapshot)
-    direction = "below" if snapshot.current_price >= snapshot.twenty_day_moving_average else "above"
-    return [
-        f"Price closes {direction} the current 20-day average of ₹{snapshot.twenty_day_moving_average:,.2f}.",
-        f"The current {snapshot.twenty_day_return:+.1f}% 20-day momentum reverses direction.",
-        f"Volume normalizes from {features.volume_ratio:.2f}x average or expands in the opposite price direction.",
+    conditions = [
         "A new verified filing contradicts the retrieved revenue, margin, debt, or guidance evidence.",
         f"Volatility moves beyond the investor's configured risk threshold.",
     ]
+    if snapshot.twenty_day_moving_average is not None:
+        direction = "below" if snapshot.current_price >= snapshot.twenty_day_moving_average else "above"
+        conditions.insert(0, f"Price closes {direction} the current 20-day average of ₹{snapshot.twenty_day_moving_average:,.2f}.")
+    if snapshot.twenty_day_return is not None:
+        conditions.insert(1, f"The current {snapshot.twenty_day_return:+.1f}% 20-day momentum reverses direction.")
+    if features.volume_ratio is not None:
+        conditions.insert(2, f"Volume normalizes from {features.volume_ratio:.2f}x average or expands in the opposite price direction.")
+    return conditions
 
 
 def _stress(agents: list[AgentOutput], synthesis: Synthesis) -> StressTest:
@@ -190,7 +194,7 @@ def build_decision_lab(investigation_id: str, snapshot: MarketSnapshot, profile:
     verification = _verify(agents)
     missing = _missing(agents, snapshot, profile)
     features = calculate_features(snapshot)
-    event_title = "Volume anomaly detected" if features.volume_ratio >= 1.4 else "Market movement detected"
+    event_title = "Volume anomaly detected" if features.volume_ratio is not None and features.volume_ratio >= 1.4 else "Market movement detected"
     degraded = any(agent.status != AgentStatus.completed for agent in agents)
     replay_names = [
         ("investigation_started", "Investigation started"),
@@ -210,7 +214,9 @@ def build_decision_lab(investigation_id: str, snapshot: MarketSnapshot, profile:
     return DecisionLab(
         investigation_id=f"INV-{snapshot.symbol}-{investigation_id[:8].upper()}",
         event=DecisionEvent(title=event_title,
-                            description=f"{snapshot.symbol} volume is {features.volume_ratio:.2f}x its average; data is simulated."),
+                            description=(f"{snapshot.symbol} volume is {features.volume_ratio:.2f}x its average; "
+                                         f"data mode is {snapshot.data_mode}." if features.volume_ratio is not None else
+                                         f"{snapshot.symbol} volume anomaly is unavailable; data mode is {snapshot.data_mode}.")),
         committee=committee, devils_advocate=_devils_advocate(agents, committee),
         evidence_verification=verification, missing_information=missing,
         decision_dna=_dna(agents, verification, profile), change_our_mind=_change_conditions(snapshot),
