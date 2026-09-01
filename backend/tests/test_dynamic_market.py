@@ -1,3 +1,5 @@
+import gzip
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -9,7 +11,8 @@ from app.config import get_settings
 from app.main import app
 from app.schemas import Candle, MarketQuote
 from app.services.instruments import (get_instrument, parse_instruments, search_instruments,
-                                      sync_catalogue, upsert_instruments)
+                                      sync_catalogue, upsert_instruments,
+                                      decode_instrument_master, InstrumentMasterError)
 from app.services.market_data import snapshot_from_market_data
 from app.services.upstox import (UpstoxAuthenticationError, UpstoxProvider,
                                  UpstoxRateLimitError)
@@ -43,6 +46,12 @@ def mock_client(status: int, payload: object, counter: list[int] | None = None) 
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
+def bytes_client(content: bytes, headers: dict[str, str] | None = None, status: int = 200) -> httpx.Client:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, content=content, headers=headers, request=request)
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
 def test_master_filter_upsert_search_ranking_and_exchange(client: TestClient) -> None:
     parsed = parse_instruments(MASTER)
     assert len(parsed) == 2 and {item.exchange for item in parsed} == {"NSE", "BSE"}
@@ -56,9 +65,43 @@ def test_master_filter_upsert_search_ranking_and_exchange(client: TestClient) ->
 
 def test_catalogue_sync_mock_and_cached_failure(client: TestClient) -> None:
     first = sync_catalogue(force=True, client=mock_client(200, MASTER))
-    assert first.status == "success" and first.instrument_count >= 2
+    assert first.status == "success" and first.instrument_count >= 2 and first.last_success_at
     failed = sync_catalogue(force=True, client=mock_client(503, {"error": "down"}))
-    assert failed.status == "cached" and failed.instrument_count >= 2 and failed.error
+    assert failed.status == "cached" and failed.instrument_count == first.instrument_count and failed.error
+    assert failed.last_success_at == first.last_success_at
+
+
+def test_instrument_master_decodes_gzip_plain_magic_and_http_decoded_bytes() -> None:
+    plain = json.dumps(MASTER).encode()
+    compressed = gzip.compress(plain)
+    assert len(decode_instrument_master(compressed)) == len(MASTER)
+    assert len(decode_instrument_master(compressed, None)) == len(MASTER)
+    # A client may transparently decompress content while retaining gzip metadata.
+    assert len(decode_instrument_master(plain, "gzip")) == len(MASTER)
+    assert len(decode_instrument_master(plain)) == len(MASTER)
+
+
+@pytest.mark.parametrize("content, message", [
+    (b"\x1f\x8bcorrupt", "gzip payload is invalid"),
+    (gzip.compress(b"not-json"), "invalid JSON"),
+    (gzip.compress(b"\xff\xfe"), "not valid UTF-8"),
+    (b"", "response was empty"),
+    (b'{"records": []}', "top-level list"),
+])
+def test_instrument_master_safe_decode_errors(content: bytes, message: str) -> None:
+    with pytest.raises(InstrumentMasterError, match=message):
+        decode_instrument_master(content)
+
+
+def test_gzip_refresh_sets_success_and_repeated_refresh_does_not_duplicate(client: TestClient) -> None:
+    compressed = gzip.compress(json.dumps(MASTER).encode())
+    first = sync_catalogue(force=True, client=bytes_client(compressed))
+    second = sync_catalogue(force=True, client=bytes_client(compressed, {"content-encoding": "gzip"}))
+    assert first.status == second.status == "success"
+    assert first.last_success_at and second.last_success_at
+    assert first.instrument_count == second.instrument_count
+    assert len(search_instruments("ACME")) == 2
+    assert not search_instruments("ACME FUT")
 
 
 def quote_payload() -> dict[str, object]:

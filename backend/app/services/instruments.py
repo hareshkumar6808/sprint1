@@ -1,4 +1,5 @@
 """Provider-independent, persistent NSE/BSE equity catalogue."""
+import gzip
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +12,40 @@ from app.database import connection
 from app.schemas import CatalogueStatus, Instrument, InstrumentSearchResult
 
 FIXTURE = Path(__file__).parent.parent / "data" / "instruments_fixture.json"
+GZIP_MAGIC = b"\x1f\x8b"
+
+
+class InstrumentMasterError(ValueError):
+    """Safe, user-facing catalogue decoding error without response-body content."""
+
+
+def decode_instrument_master(content: bytes, content_encoding: str | None = None) -> list[dict[str, Any]]:
+    """Decode raw or HTTP-decoded Upstox JSON bytes, decompressing at most once."""
+    if not content:
+        raise InstrumentMasterError("Instrument master response was empty")
+    decoded = content
+    # HTTP clients normally remove Content-Encoding themselves. Magic bytes prove
+    # that this particular payload is still compressed, regardless of headers.
+    if content.startswith(GZIP_MAGIC):
+        try:
+            decoded = gzip.decompress(content)
+        except (gzip.BadGzipFile, EOFError, OSError) as exc:
+            raise InstrumentMasterError("Instrument master gzip payload is invalid or corrupt") from exc
+    try:
+        text = decoded.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        state = "after gzip decompression" if content.startswith(GZIP_MAGIC) else "in provider response"
+        raise InstrumentMasterError(f"Instrument master is not valid UTF-8 {state}") from exc
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        encoding_note = " (HTTP gzip metadata was already decoded)" if content_encoding and "gzip" in content_encoding.lower() else ""
+        raise InstrumentMasterError(f"Instrument master contains invalid JSON{encoding_note}") from exc
+    if not isinstance(payload, list):
+        raise InstrumentMasterError("Instrument master JSON must contain a top-level list")
+    if not all(isinstance(item, dict) for item in payload):
+        raise InstrumentMasterError("Instrument master list contains non-object records")
+    return payload
 
 
 def parse_instruments(records: list[dict[str, Any]], synced_at: datetime | None = None) -> list[Instrument]:
@@ -46,7 +81,7 @@ def upsert_instruments(items: list[Instrument]) -> int:
 
 def seed_fixture_if_empty() -> None:
     with connection() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM instruments").fetchone()[0]
+        count = conn.execute("SELECT COUNT(*) FROM instruments WHERE segment IN ('NSE_EQ','BSE_EQ') AND instrument_type='EQ'").fetchone()[0]
     if count == 0:
         upsert_instruments(parse_instruments(json.loads(FIXTURE.read_text())))
 
@@ -54,7 +89,7 @@ def seed_fixture_if_empty() -> None:
 def catalogue_status() -> CatalogueStatus:
     with connection() as conn:
         row = conn.execute("SELECT * FROM catalogue_sync WHERE provider='upstox'").fetchone()
-        count = conn.execute("SELECT COUNT(*) FROM instruments").fetchone()[0]
+        count = conn.execute("SELECT COUNT(*) FROM instruments WHERE segment IN ('NSE_EQ','BSE_EQ') AND instrument_type='EQ'").fetchone()[0]
     if not row:
         return CatalogueStatus(provider="upstox", status="cached" if count else "never", instrument_count=count)
     data = dict(row); data["provider"] = "upstox"; data["instrument_count"] = count
@@ -70,15 +105,16 @@ def sync_catalogue(force: bool = False, client: httpx.Client | None = None) -> C
     remote = client or httpx.Client(timeout=settings.market_request_timeout_seconds, follow_redirects=True)
     try:
         response = remote.get(settings.upstox_instrument_master_url, headers={"Accept": "application/json"})
-        response.raise_for_status(); payload = response.json()
-        if not isinstance(payload, list):
-            raise ValueError("Instrument master was not a JSON list")
+        response.raise_for_status()
+        payload = decode_instrument_master(response.content, response.headers.get("content-encoding"))
         items = parse_instruments(payload, now)
         if not items:
-            raise ValueError("Instrument master contained no supported NSE/BSE equities")
+            raise InstrumentMasterError("Instrument master contained no supported NSE/BSE EQ instruments")
         upsert_instruments(items)
+        with connection() as conn:
+            stored_count = conn.execute("SELECT COUNT(*) FROM instruments WHERE segment IN ('NSE_EQ','BSE_EQ') AND instrument_type='EQ'").fetchone()[0]
         status, error, success = "success", None, now.isoformat()
-    except (httpx.HTTPError, ValueError, TypeError, json.JSONDecodeError) as exc:
+    except (httpx.HTTPError, InstrumentMasterError, TypeError) as exc:
         status, error, success = "failed", f"{type(exc).__name__}: {exc}", current.last_success_at.isoformat() if current.last_success_at else None
     finally:
         if owned:
@@ -88,7 +124,7 @@ def sync_catalogue(force: bool = False, client: httpx.Client | None = None) -> C
           VALUES('upstox',?,?,?,?,?) ON CONFLICT(provider) DO UPDATE SET status=excluded.status,
           last_attempt_at=excluded.last_attempt_at,last_success_at=excluded.last_success_at,
           instrument_count=excluded.instrument_count,error=excluded.error""",
-          (status, now.isoformat(), success, len(items) if status == "success" else current.instrument_count, error))
+          (status, now.isoformat(), success, stored_count if status == "success" else current.instrument_count, error))
     result = catalogue_status()
     return result.model_copy(update={"status": "cached"}) if status == "failed" and result.instrument_count else result
 

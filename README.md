@@ -64,7 +64,7 @@ Official references: [Upstox instruments](https://upstox.com/developer/api-docum
 
 ### Upstox developer setup
 
-Create an Upstox developer application and complete Upstox OAuth outside FinSync to obtain an access token. FinSync does not implement login, store refresh tokens, or expose tokens to the browser. Put the access token only in the local `.env` file:
+Create an Upstox developer application and complete Upstox OAuth outside FinSync to obtain an access token. FinSync does not implement login, store refresh tokens, or expose tokens to the browser. Put the access token only in the private `backend/.env` runtime file:
 
 ```dotenv
 MARKET_DATA_MODE=live
@@ -130,12 +130,12 @@ python -m pip install -r backend/requirements.txt
 cd frontend
 npm install
 cd ..
-cp .env.example .env
+cp .env.example backend/.env
 ```
 
 No API keys or external accounts are required for the offline demo. `sentence-transformers` may download a model during installation; production-style offline use should pre-cache `sentence-transformers/all-MiniLM-L6-v2`.
 
-Runtime environment variables are documented in `.env.example`. Leave `LLM_API_KEY` and `MARKET_DATA_API_KEY` empty for deterministic/simulated operation. Set `MARKET_DATA_MODE=live` plus a valid Alpha Vantage key to attempt live quote overlays. Set `LLM_API_KEY` to enable bounded OpenAI reasoning. Secrets are read only from environment variables and must never be committed.
+Runtime environment variables are documented in the root `.env.example`. Because the backend normally starts with `backend/` as its working directory and uses `SettingsConfigDict(env_file=".env")`, copy that example to the private runtime file `backend/.env`. Leave keys empty for deterministic/simulated operation. Set `MARKET_DATA_MODE=live`, `MARKET_DATA_PROVIDER=upstox`, and a valid `UPSTOX_ACCESS_TOKEN` for Upstox quotes. Set `LLM_API_KEY` to enable bounded OpenAI reasoning. Secrets are read only from environment variables; never commit `backend/.env`.
 
 ## Run locally
 
