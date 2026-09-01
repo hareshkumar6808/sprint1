@@ -4,6 +4,7 @@ from pathlib import Path
 from time import perf_counter
 
 import pytest
+import numpy as np
 from fastapi.testclient import TestClient
 
 from app.agents import behavioral, fundamental, sentiment, technical
@@ -17,6 +18,7 @@ from app.services.metrics import (data_completeness, historical_accuracy,
                                   historical_accuracy_counts, portfolio_concentration)
 from app.services.retrieval import FilingRetriever
 from app.services.synthesizer import synthesize
+from app.services.llm_provider import LLMProvider
 
 
 def profile(risk: str = "moderate", maximum_volatility: float = 25, user_id: str = "unit-user") -> Profile:
@@ -218,3 +220,79 @@ def test_decision_lab_contract_and_scenario_differences(client: TestClient) -> N
     infy_lab = results["INFY"]["decision_lab"]
     assert any("sentiment" in gap.lower() for gap in infy_lab["missing_information"]["gaps"])
     assert infy_lab["missing_information"]["confidence_penalty"] > 0
+
+
+class KeywordEncoder:
+    def encode(self, sentences: list[str], *, normalize_embeddings: bool = True) -> np.ndarray:
+        vectors = []
+        for text in sentences:
+            lower = text.lower()
+            vector = np.array([sum(word in lower for word in ("revenue", "growth", "demand")),
+                               sum(word in lower for word in ("debt", "leverage", "liquidity")),
+                               sum(word in lower for word in ("risk", "delay", "volatility"))], dtype=float)
+            norm = np.linalg.norm(vector)
+            vectors.append(vector / norm if normalize_embeddings and norm else vector)
+        return np.array(vectors)
+
+
+def test_semantic_retrieval_and_explicit_tfidf_fallback(tmp_path: Path) -> None:
+    semantic = FilingRetriever(encoder=KeywordEncoder(), vector_store=tmp_path / "vectors.json")
+    results = semantic.retrieve("RELIANCE", "revenue growth and demand", limit=2)
+    assert semantic.mode == "semantic" and results
+    assert results[0].score > 0 and results[0].source_id.startswith("filing:RELIANCE")
+    assert (tmp_path / "vectors.json").exists()
+    fallback = FilingRetriever(force_tfidf=True, vector_store=tmp_path / "unused.json")
+    assert fallback.mode == "tfidf_fallback"
+    assert fallback.retrieve("TCS", "revenue growth", limit=1)
+
+
+def test_missing_llm_key_and_malformed_output_degrade_safely(monkeypatch: pytest.MonkeyPatch) -> None:
+    output = AgentOutput(agent="technical", status=AgentStatus.completed, classification=Classification.bullish,
+                         confidence=70, summary="bounded", evidence=["cited"], sources=[], latency_ms=1)
+    provider = LLMProvider()
+    monkeypatch.setattr(provider.settings, "llm_api_key", None)
+    assert asyncio.run(provider.refine("technical", output)).runtime_mode == "deterministic_fallback"
+
+    class BadResponse:
+        def raise_for_status(self) -> None: pass
+        def json(self) -> dict[str, object]:
+            return {"choices": [{"message": {"content": "not-json"}}]}
+    class BadClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *_: object) -> None: pass
+        async def post(self, *_: object, **__: object) -> BadResponse: return BadResponse()
+    monkeypatch.setattr(provider.settings, "llm_api_key", "configured-placeholder")
+    monkeypatch.setattr("app.services.llm_provider.httpx.AsyncClient", lambda **_: BadClient())
+    degraded = asyncio.run(provider.refine("technical", output))
+    assert degraded.runtime_mode == "deterministic_fallback"
+    assert any("degraded safely" in warning for warning in degraded.warnings)
+
+
+def test_decisions_and_execution_metrics_persist(client: TestClient) -> None:
+    create_profile(client, "decision-user", "moderate", 25)
+    analysis = client.post("/api/v1/analyze", json={"user_id": "decision-user", "symbol": "RELIANCE"}).json()
+    metrics = analysis["metrics"]
+    assert metrics["per_agent_latency_ms"].keys() == {"technical", "sentiment", "fundamental", "behavioral"}
+    assert metrics["retrieval_mode"] in {"semantic", "tfidf_fallback", "unavailable"}
+    assert metrics["chunks_retrieved"] > 0 and metrics["evidence_coverage_percent"] > 0
+    payload = {"user_id": "decision-user", "ticker": "RELIANCE", "action": "WATCH",
+               "analysis_id": analysis["analysis_id"], "current_signal": analysis["market_signal"],
+               "confidence": analysis["synthesis"]["confidence"]}
+    recorded = client.post("/api/v1/decisions", json=payload)
+    assert recorded.status_code == 201
+    history = client.get("/api/v1/decisions/decision-user").json()
+    assert history[0]["action"] == "WATCH" and history[0]["analysis_id"] == analysis["analysis_id"]
+
+
+def test_same_reliance_input_is_personalized_without_changing_market_signal(client: TestClient) -> None:
+    create_profile(client, "reliance-conservative", "conservative", 15)
+    create_profile(client, "reliance-aggressive", "aggressive", 35)
+    conservative = client.post("/api/v1/analyze", json={"user_id": "reliance-conservative", "symbol": "RELIANCE"}).json()
+    aggressive = client.post("/api/v1/analyze", json={"user_id": "reliance-aggressive", "symbol": "RELIANCE"}).json()
+    assert conservative["market_snapshot"] == aggressive["market_snapshot"]
+    assert conservative["market_signal"] == aggressive["market_signal"]
+    conservative_behavior = next(item for item in conservative["agents"] if item["agent"] == "behavioral")
+    aggressive_behavior = next(item for item in aggressive["agents"] if item["agent"] == "behavioral")
+    assert conservative_behavior["classification"] == "unsuitable"
+    assert aggressive_behavior["classification"] == "suitable"
+    assert conservative["synthesis"]["personalized_guidance"] != aggressive["synthesis"]["personalized_guidance"]

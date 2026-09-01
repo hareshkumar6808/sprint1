@@ -31,6 +31,9 @@ class Source(BaseModel):
     document: str
     date: date
     chunk_id: str | None = None
+    source_id: str | None = None
+    excerpt: str | None = None
+    relevance_score: float | None = Field(default=None, ge=0, le=1)
 
 
 class AgentOutput(BaseModel):
@@ -44,6 +47,13 @@ class AgentOutput(BaseModel):
     sources: list[Source] = Field(default_factory=list)
     latency_ms: float = Field(ge=0)
     warnings: list[str] = Field(default_factory=list)
+    runtime_mode: Literal["llm", "deterministic_fallback"] = "deterministic_fallback"
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    evidence_ids: list[str] = Field(default_factory=list)
+    retrieval_mode: Literal["semantic", "tfidf_fallback", "unavailable"] | None = None
+    retrieval_latency_ms: float = Field(default=0, ge=0)
+    chunks_retrieved: int = Field(default=0, ge=0)
 
 
 class ProfileInput(BaseModel):
@@ -79,6 +89,9 @@ class MarketSnapshot(BaseModel):
     debt_to_equity_ratio: float
     data_timestamp: datetime
     simulated_data: bool
+    provider_name: str = "local_simulated_fixture"
+    freshness: str = "fixture_timestamp"
+    fallback_reason: str | None = None
 
 
 class Synthesis(BaseModel):
@@ -101,6 +114,16 @@ class AnalysisMetrics(BaseModel):
     agents_expected: int
     historical_signal_correct: int = Field(default=0, ge=0)
     historical_signal_evaluated: int = Field(default=0, ge=0)
+    per_agent_latency_ms: dict[str, float] = Field(default_factory=dict)
+    retrieval_latency_ms: float = Field(default=0, ge=0)
+    documents_retrieved: int = Field(default=0, ge=0)
+    chunks_retrieved: int = Field(default=0, ge=0)
+    evidence_coverage_percent: float = Field(default=0, ge=0, le=100)
+    agent_agreement_percent: float = Field(default=0, ge=0, le=100)
+    fallback_activations: int = Field(default=0, ge=0)
+    runtime_mode: Literal["llm", "deterministic_fallback"] = "deterministic_fallback"
+    retrieval_mode: Literal["semantic", "tfidf_fallback", "unavailable"] = "unavailable"
+    market_data_mode: Literal["live", "simulated"] = "simulated"
 
 
 class DecisionEvent(BaseModel):
@@ -201,3 +224,17 @@ class AnalysisResponse(BaseModel):
 class AnalyzeRequest(BaseModel):
     user_id: str = Field(min_length=1)
     symbol: str = Field(min_length=1)
+
+
+class DecisionInput(BaseModel):
+    user_id: str = Field(min_length=1)
+    ticker: str = Field(min_length=1)
+    action: Literal["BUY", "SELL", "WATCH", "IGNORE", "INVESTIGATE"]
+    analysis_id: str = Field(min_length=1)
+    current_signal: Classification
+    confidence: int = Field(ge=0, le=100)
+
+
+class UserDecision(DecisionInput):
+    id: int
+    created_at: datetime

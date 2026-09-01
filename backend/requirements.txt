@@ -6,4 +6,4 @@ python-dotenv>=1.1,<2
 pytest>=8.4,<10
 httpx>=0.28,<1
 scikit-learn>=1.7,<2
-
+sentence-transformers>=5,<6

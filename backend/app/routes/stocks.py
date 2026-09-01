@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 
 from app.schemas import MarketSnapshot
-from app.services.market_data import SimulatedMarketDataProvider
+from app.services.market_data import ResilientMarketDataProvider
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
-provider = SimulatedMarketDataProvider()
+provider = ResilientMarketDataProvider()
 
 
 @router.get("", response_model=list[MarketSnapshot])

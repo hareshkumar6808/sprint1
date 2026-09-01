@@ -4,7 +4,7 @@ FinSync Intelligence is a local-first, multi-agent financial research applicatio
 
 ## Problem and solution
 
-Retail investors often see isolated price signals without the evidence, conflicts, suitability context, or data-quality limitations behind them. FinSync runs four independent deterministic agents concurrently, retrieves relevant filing passages with TF-IDF, preserves every agent result, and synthesizes only cited evidence. The dashboard exposes classifications, confidence, reasoning, sources, missing inputs, portfolio state, and measured pipeline quality.
+Retail investors often see isolated price signals without the evidence, conflicts, suitability context, or data-quality limitations behind them. FinSync runs four independent agents concurrently, uses local semantic embeddings when a cached model is available, falls back explicitly to TF-IDF, preserves every agent result, and synthesizes only cited evidence. Optional LLM and live-market modes never replace the reliable offline demonstration.
 
 ## Architecture and data flow
 
@@ -12,7 +12,7 @@ Retail investors often see isolated price signals without the evidence, conflict
 flowchart LR
   M[Simulated Market Data] --> T[Technical Agent]
   N[Synthetic News] --> S[Sentiment Agent]
-  F[Local Filing Corpus] --> R[TF-IDF Retrieval] --> U[Fundamental Agent]
+  F[Local Filing Corpus] --> R[Semantic Retrieval / TF-IDF Fallback] --> U[Fundamental Agent]
   P[User Profile + Portfolio] --> B[Behavioral Agent]
   T --> O[Async Parallel Orchestrator]
   S --> O
@@ -26,8 +26,8 @@ flowchart LR
 1. The frontend saves a risk profile, portfolio, watchlist, and interaction context.
 2. The API validates the stored user and selected symbol.
 3. Local market, news, and filing fixtures are loaded without filling missing values.
-4. Four agents run through `asyncio.gather()` with per-agent failure isolation.
-5. Filing queries retrieve traceable TF-IDF chunks for revenue, profitability, debt, guidance, and risk.
+4. Four deterministic base agents run through `asyncio.gather()` with timestamps, latency, evidence IDs, and per-agent failure isolation. If configured, bounded LLM refinement is validated back through the same Pydantic contract.
+5. Filing queries retrieve traceable semantic chunks for revenue, profitability, debt, guidance, and risk. If the local embedding model cannot load, the response reports `tfidf_fallback`.
 6. Deterministic synthesis detects agreement, conflict, and missing evidence, then adjusts confidence.
 7. The complete typed response is logged in SQLite and rendered by the dashboard.
 
@@ -46,7 +46,7 @@ Historical accuracy is calculated only from `historical_signals.json` as correct
 
 ## Retrieval and citations
 
-`FilingRetriever` splits each local synthetic filing into paragraph chunks and builds a scikit-learn TF-IDF index. The Fundamental Agent queries five evidence categories and uses only returned passages. Each result retains `document`, `chunk_id`, text, and similarity score. These local documents are synthetic demonstration material, not regulatory filings or external citations.
+`FilingRetriever` splits each local synthetic filing into paragraph chunks. When the configured local MiniLM sentence-transformer is cached, normalized semantic embeddings are persisted in `backend/app/data/filing_vectors.json` with a corpus fingerprint and queried by cosine similarity. Each result retains source ID, title, document, chunk ID, excerpt, and relevance score. If the model/dependency cannot load, the same interface uses TF-IDF and truthfully reports `tfidf_fallback`; it is never described as vector retrieval. These documents remain synthetic demonstration material.
 
 ## Persistence
 
@@ -57,7 +57,9 @@ SQLite stores user profiles and complete serialized `AnalysisResponse` logs. Exi
 - Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS
 - Backend: FastAPI, Pydantic, built-in `sqlite3`
 - Orchestration: Python `asyncio`
-- Retrieval: scikit-learn TF-IDF and cosine similarity
+- Retrieval: optional sentence-transformer semantic embeddings with a persistent JSON vector store; scikit-learn TF-IDF fallback
+- Optional reasoning: OpenAI-compatible Chat Completions, bounded by timeout and Pydantic validation
+- Optional live quotes: Alpha Vantage with automatic simulated-fixture fallback
 - Tests: pytest, FastAPI TestClient/httpx
 
 ## Folder structure
@@ -90,7 +92,9 @@ cd ..
 cp .env.example .env
 ```
 
-No API keys or external accounts are required.
+No API keys or external accounts are required for the offline demo. `sentence-transformers` may download a model during installation; production-style offline use should pre-cache `sentence-transformers/all-MiniLM-L6-v2`.
+
+Runtime environment variables are documented in `.env.example`. Leave `LLM_API_KEY` and `MARKET_DATA_API_KEY` empty for deterministic/simulated operation. Set `MARKET_DATA_MODE=live` plus a valid Alpha Vantage key to attempt live quote overlays. Set `LLM_API_KEY` to enable bounded OpenAI reasoning. Secrets are read only from environment variables and must never be committed.
 
 ## Run locally
 
@@ -136,6 +140,8 @@ npm run build
 | GET | `/api/v1/profiles/{user_id}` | Load a stored profile |
 | POST | `/api/v1/analyze` | Run and persist the four-agent pipeline |
 | GET | `/api/v1/logs/{user_id}` | Load complete saved analyses |
+| POST | `/api/v1/decisions` | Persist BUY/SELL/WATCH/IGNORE/INVESTIGATE |
+| GET | `/api/v1/decisions/{user_id}` | Load recent user decisions |
 
 Example profile:
 
@@ -182,7 +188,7 @@ Example analysis request:
 |---|---|---|---|
 | Price, volume, technical data | `market_data.json`, `market_data.py`, `/api/v1/stocks` | Three validated simulated snapshots | Complete |
 | Financial document corpus | `app/data/filings/*.txt` | One synthetic multi-section filing per company | Complete |
-| Semantic relevance retrieval | `services/retrieval.py` | TF-IDF/cosine-ranked chunks with IDs | Complete |
+| Semantic relevance retrieval | `services/retrieval.py` | MiniLM embeddings when locally available; explicit TF-IDF fallback | Optional semantic runtime / complete fallback |
 | Multi-agent orchestration | `services/orchestrator.py` | Four results preserved through `asyncio.gather()` | Complete |
 | Behavioral profiling | `agents/behavioral.py`, `/api/v1/profiles` | Conservative/aggressive TCS results differ | Complete |
 | Visualization/interface | `frontend/components/Dashboard.tsx` | Responsive profile, signals, agents, evidence, metrics, history | Complete |
@@ -202,7 +208,10 @@ Example analysis request:
 | Portfolio/watchlist | Profile schema and dashboard editor | Editable holdings, allocation validation, watchlist | Complete |
 | Current market signals | Snapshot and signal panels | Price, returns, average, volume, volatility, drawdown | Complete |
 | Agent reasoning | Agent evidence plus `reasoning_trace` | Expandable ordered explanation | Complete |
-| Three logged metrics | `AnalysisMetrics` | Latency, fixture accuracy/counts, concentration, completeness, agents | Complete |
+| Execution metrics | `AnalysisMetrics` | Total/per-agent/retrieval latency, chunks, coverage, agreement, concentration, fallbacks and modes | Complete |
+| User decisions | `routes/decisions.py`, SQLite | Controls and recent-decision history | Complete |
+| Optional LLM agents | `services/llm_provider.py` | Runtime labels and safe deterministic fallback | Optional configuration |
+| Live-data fallback | `services/market_data.py` | Provider, freshness and fallback reason | Optional live configuration / complete fallback |
 | End-to-end scenario | `/api/v1/analyze`; RELIANCE | Profile → agents → synthesis → SQLite → dashboard | Complete |
 | Degraded scenario | INFY missing news | 3/4, 75%, sentiment unavailable | Complete |
 | Conflicting scenario | TCS fixture | Conflict banner and confidence penalty | Complete |
@@ -213,8 +222,8 @@ Example analysis request:
 
 - All bundled market records, news, filing summaries, and historical outcomes are synthetic and visibly marked simulated.
 - Fixture-based historical accuracy uses a very small sample and is not evidence of live-market predictive performance.
-- The local TF-IDF corpus is deliberately small and is not a substitute for verified regulatory filings.
-- No live feed, brokerage integration, transaction execution, LLM, or external citation service is enabled.
+- The local synthetic corpus is deliberately small and is not a substitute for verified regulatory filings. Semantic mode depends on a locally available embedding model; otherwise the UI reports TF-IDF fallback.
+- LLM and Alpha Vantage modes are optional and inactive without credentials. No brokerage integration, transaction execution, or external citation service is provided.
 - A missing feed or agent reduces completeness and confidence; without cited evidence the system returns `insufficient_data`.
 
 FinSync Intelligence is educational research software, not personalized financial advice. It does not guarantee returns or issue direct buy/sell instructions.

@@ -7,7 +7,7 @@ from app.database import connection, encode_json
 from app.routes.profiles import get_profile
 from app.schemas import (AnalysisMetrics, AnalysisResponse, AnalyzeRequest, AgentStatus,
                          Classification, Source)
-from app.services.market_data import SimulatedMarketDataProvider, SymbolNotFoundError
+from app.services.market_data import ResilientMarketDataProvider, SymbolNotFoundError
 from app.services.decision_lab import build_decision_lab
 from app.services.metrics import (data_completeness, historical_accuracy,
                                   historical_accuracy_counts, portfolio_concentration)
@@ -15,7 +15,7 @@ from app.services.orchestrator import run_agents
 from app.services.synthesizer import synthesize
 
 router = APIRouter(prefix="/analyze", tags=["analysis"])
-provider = SimulatedMarketDataProvider()
+provider = ResilientMarketDataProvider()
 DISCLAIMER = ("Educational research intelligence using simulated local data. This is not financial advice, "
               "a direct trading instruction, or a guaranteed outcome.")
 
@@ -40,6 +40,11 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
     market_signal, synthesis, warnings = synthesize(agents)
     total_latency = round((perf_counter() - started) * 1000, 3)
     historical_correct, historical_evaluated = historical_accuracy_counts(snapshot.symbol)
+    fundamental = next((agent for agent in agents if agent.agent == "fundamental"), None)
+    directional = [agent.classification.value for agent in agents if agent.status == AgentStatus.completed]
+    largest = max((directional.count(value) for value in set(directional)), default=0)
+    cited_claims = sum(len(agent.evidence) for agent in agents if agent.sources)
+    total_claims = sum(len(agent.evidence) for agent in agents)
     metrics = AnalysisMetrics(
         latency_ms=total_latency,
         historical_signal_accuracy_percent=historical_accuracy(snapshot.symbol),
@@ -48,9 +53,20 @@ async def analyze(payload: AnalyzeRequest) -> AnalysisResponse:
         agents_completed=sum(agent.status == AgentStatus.completed for agent in agents), agents_expected=4,
         historical_signal_correct=historical_correct,
         historical_signal_evaluated=historical_evaluated,
+        per_agent_latency_ms={agent.agent: agent.latency_ms for agent in agents},
+        retrieval_latency_ms=fundamental.retrieval_latency_ms if fundamental else 0,
+        documents_retrieved=len({source.document for source in (fundamental.sources if fundamental else [])}),
+        chunks_retrieved=fundamental.chunks_retrieved if fundamental else 0,
+        evidence_coverage_percent=round(cited_claims / total_claims * 100, 2) if total_claims else 0,
+        agent_agreement_percent=round(largest / len(directional) * 100, 2) if directional else 0,
+        fallback_activations=sum(agent.runtime_mode == "deterministic_fallback" for agent in agents)
+            + int(bool(snapshot.fallback_reason)) + int(bool(fundamental and fundamental.retrieval_mode == "tfidf_fallback")),
+        runtime_mode="llm" if any(agent.runtime_mode == "llm" for agent in agents) else "deterministic_fallback",
+        retrieval_mode=fundamental.retrieval_mode if fundamental and fundamental.retrieval_mode else "unavailable",
+        market_data_mode="simulated" if snapshot.simulated_data else "live",
     )
     reasoning = [
-        f"Loaded the stored {profile.risk_profile} profile and validated {snapshot.symbol} simulated market data.",
+        f"Loaded the stored {profile.risk_profile} profile and validated {snapshot.symbol} {metrics.market_data_mode} market data.",
         f"Ran four independent agents concurrently in {orchestration_latency:.3f} ms.",
         "Combined only structured agent evidence using deterministic classification and confidence rules.",
     ]
