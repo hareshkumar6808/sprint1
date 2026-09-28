@@ -206,19 +206,18 @@ With empty xAI credentials, analysis remains operational and reports the LLM run
 
 ## Run locally
 
-Backend terminal:
+Backend terminal, starting from the repository root:
 
 ```bash
-cd /Users/pavans/Desktop/sprint1
 source .venv/bin/activate
 cd backend
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Frontend terminal:
+Frontend terminal, starting from the repository root:
 
 ```bash
-cd /Users/pavans/Desktop/sprint1/frontend
+cd frontend
 npm run dev -- --hostname 127.0.0.1
 ```
 
@@ -236,12 +235,14 @@ If a port is already occupied, check for an existing development server before s
 
 ## Tests and build
 
+From the repository root:
+
 ```bash
-cd /Users/pavans/Desktop/sprint1/backend
+cd backend
 ../.venv/bin/pytest
 ../.venv/bin/python -m compileall -q app tests
 
-cd /Users/pavans/Desktop/sprint1/frontend
+cd ../frontend
 npm run lint
 npm run typecheck
 npm run build
